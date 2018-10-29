@@ -1,0 +1,9 @@
+while True:
+	try:
+        print(sess.run(next_element))
+
+    except tf.errors.OutOfRangeError:
+        break
+            
+
+
