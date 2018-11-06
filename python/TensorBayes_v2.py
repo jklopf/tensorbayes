@@ -186,65 +186,14 @@ print_dict = {'Emu': Emu, 'Ew': Ew,
 # def cond_false():
     
 #     return 0.
-    
-def marker_toss(colx):
-    global Sigma2_e
-    global Sigma2_b
-    global epsilon
-    global Ew
-    Cj = tf_squared_norm(colx) + Sigma2_e/Sigma2_b
-    rj = tf.tensordot(tf.transpose(colx), epsilon, 1)[0]
-    ratio = tf.exp( - ( tf.square(rj) / ( 2*Cj*Sigma2_e ))) * tf.sqrt((Sigma2_b*Cj)/Sigma2_e)
-    pij = Ew / (Ew + ratio*(1-Ew))
-    return rbernoulli(pij), Cj, rj
-
-def for_loop(eps, beta, x):
-    global Sigma2_e
-    try:
-        with tf.name_scope('ftemp'):
-            
-              index = np.random.permutation(M)
-              epsilon = eps
-              Ebeta = beta
-              ny = 0
-
-              def extra_test(ny_2, epsilon_1, Ebeta_3):
-                    with tf.name_scope('extra_test'):
-                          return True
-
-              def loop_body(loop_vars, ny_2, epsilon_1, Ebeta_3):
-                with tf.name_scope('loop_body'):
-                  marker = loop_vars
-                  epsilon_1 = epsilon_1 + x[:, (marker)] * ag__.get_item(Ebeta_3,
-                      marker, opts=ag__.GetItemOpts(element_dtype=None))
-                  toss, Cj, rj = marker_toss(x[:, (marker)])
-
-                  def if_true():
-                    with tf.name_scope('if_true'):
-                      Ebeta_1, = Ebeta_3,
-                      Ebeta_1 = ag__.set_item(Ebeta_1, marker, 0)
-                      return ny_2, Ebeta_1
-
-                  def if_false():
-                    with tf.name_scope('if_false'):
-                      ny_1, Ebeta_2 = ny_2, Ebeta_3
-                      Ebeta_2 = ag__.set_item(Ebeta_2, marker, rnorm(rj/Cj,Sigma2_e/Cj))
-                      ny_1 += 1
-                      return ny_1, Ebeta_2
-                  ny_2, Ebeta_3 = ag__.utils.run_cond(tf.equal(toss, 0), if_true,
-                      if_false)
-                  epsilon_1 = epsilon_1 - x[:, (marker)] * ag__.get_item(Ebeta_3,
-                      marker, opts=ag__.GetItemOpts(element_dtype=None))
-                  return ny_2, epsilon_1, Ebeta_3
-              ny, epsilon, Ebeta = ag__.for_stmt(index, extra_test, loop_body, (ny,
-                  epsilon, Ebeta))
-              return epsilon, Ebeta, ny
-    except:
-        ag__.rewrite_graph_construction_error(ag_source_map__)
 
 
 # Number of Gibbs sampling iterations
 num_iter = 30
+
+
+
+
 
 with tf.Session() as sess:
     
