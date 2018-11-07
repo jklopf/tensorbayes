@@ -7,5 +7,7 @@ Working versions:
 - Tensorflow based: tbd.py
 
 
+Under active development:
 
+- TensorBayes_v3.py
 
