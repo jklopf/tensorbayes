@@ -156,7 +156,7 @@ s0B = tf.constant(Sigma2_b.initialized_value()/2, dtype=tf.float32)
 s0E = tf.constant(Sigma2_e.initialized_value()/2, dtype=tf.float32)
 
 # Placeholders:
-colx = tf.placeholder(tf.float32, shape=(N,1))
+Xj = tf.placeholder(tf.float32, shape=(N,1))
 
 
 # Print stuff:
@@ -190,31 +190,47 @@ def for_loop(M,N, epsilon, x, Ebeta, sigma2_e, sigma2_b, Ew, ny):
     for marker in index:
 
         colx = tf.reshape(x[:,marker], [N,1])
-        epsilon += colx * Ebeta[marker]
+        eps = epsilon + colx * Ebeta[marker]
         Cj = tf_squared_norm(colx) + sigma2_e/sigma2_b
-        rj = tf.tensordot(tf.transpose(colx), epsilon, 1)[0]
+        rj = tf.tensordot(tf.transpose(colx), eps, 1)[0]
         ratio = tf.exp( - ( tf.square(rj) / ( 2*Cj*Sigma2_e ))) * tf.sqrt((Sigma2_b*Cj)/Sigma2_e)
         pij = Ew / (Ew + ratio*(1-Ew))
         toss = rbernoulli(pij)
         def case_zero(): return 0.
         def case_one(): return rnorm(rj/Cj, sigma2_e/Cj)
+        #TODO: PROBLEM HERE 
+        # ebeta is a tensor and not a variable in this function
+        # and cannot undergo item assignment that way
         Ebeta[marker] = tf.case([tf.equal(toss, 0), case_zero], default=case_one)
         ny[marker] = toss
         epsilon -= colx * Ebeta[marker]
     
-    return Ebeta, epsilon, ny
+    return Ebeta, ny
 
 
 
 
 # assignment ops
 Emu_up = Emu.assign(sample_mu(N, Sigma2_e, Y, X, Ebeta))
+
 with tf.control_dependencies([Emu_up]):
-    ta_beta, ta_eps, ta_ny = for_loop(M,N, epsilon, x, Ebeta, Sigma2_e, Sigma2_b, Ew, ny)
-    Ebeta_up = Ebeta.assign(ta_beta)
-    eps_up = epsilon.assign()
+    
+    ta_beta, ta_ny = for_loop(M,N, epsilon, x, Ebeta, Sigma2_e, Sigma2_b, Ew, ny)
+    ebeta_up = Ebeta.assign(ta_beta)
+    nz_up = NZ.assign(ta_ny)
+    with tf.control_dependencies([ebeta_up, nz_up]):
+        eps_up = epsilon.assign(Y-tf.matmul(X,Ebeta)-vEmu*Emu)
+        s2b_up = Sigma2_b.assign(sample_sigma2_b(Ebeta_,NZ,v0B,s0B))
+    
 
-
+        sess.run(NZ.assign(np.sum(ny)))
+        ew_up = Ew.assign(sample_w(M,NZ)))
+        #sess.run(Ebeta_.assign(Ebeta))
+        sess.run(epsilon.assign(Y-tf.matmul(X,Ebeta_)-vEmu*Emu), feed_dict= {Ebeta_: Ebeta})                 
+        , feed_dict= {Ebeta_: Ebeta})
+                 
+        sess.run(Sigma2_e.assign(sample_sigma2_e(N,epsilon,v0E,s0E)))
+        
 
 
         

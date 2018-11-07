@@ -36,8 +36,6 @@ def rinvchisq(df, scale):
     sample = (df * scale)/np.random.chisquare(df)
     return sample
 
-
-
 # rnorm is defined using the variance (i.e sigma^2)
 def rnorm(mean, var):
     sd = np.sqrt(var)
