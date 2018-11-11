@@ -157,6 +157,8 @@ s0E = tf.constant(Sigma2_e.initialized_value()/2, dtype=tf.float32)
 
 # Placeholders:
 Xj = tf.placeholder(tf.float32, shape=(N,1))
+Bj = tf.placeholder(tf.float32, shape=())
+index = tf.placeholder(tf.int32, shape=())
 
 
 # Print stuff:
@@ -185,6 +187,11 @@ print_dict = {'Emu': Emu, 'Ew': Ew,
 #sess.run(ratio.assign(tf.exp(-(tf.pow(rj,2))/(2*Cj*Sigma2_e))*tf.sqrt((Sigma2_b*Cj)/Sigma2_e)))
 #sess.run(pij.assign(Ew/(Ew+ratio*(1-Ew))))
 
+
+
+# Maybe have a flow between item assignment and regular python variable
+# to make things simple
+
 def for_loop(M,N, epsilon, x, Ebeta, sigma2_e, sigma2_b, Ew, ny):
     index = np.random.permutation(M)
     for marker in index:
@@ -207,11 +214,22 @@ def for_loop(M,N, epsilon, x, Ebeta, sigma2_e, sigma2_b, Ew, ny):
     
     return Ebeta, ny
 
+def new_beta(x_j, eps, s2e, s2b, w, beta_old):
+    eps += x_j * beta_old
+    Cj = tf_squared_norm(x_j) + s2e/s2b
+    rj = tf.tensordot(tf.transpose(x_j), eps, 1)
+    ratio = tf.exp( - ( tf.square(rj) / ( 2*Cj*s2e ))) * tf.sqrt((s2b*Cj)/s2e)
+    pij = w / (w + ratio*(1-w))
+    toss = rbernoulli(pij)
+    def case_zero(): return 0., 0 # could return a list [beta,ny]
+    def case_one(): return rnorm(rj/Cj, sigma2_e/Cj), 1 # could return a list [beta,ny]
+    beta_new, incl = tf.case([tf.not_equal(toss, 0.), case_one], default=case_zero)
+    # do we handle ny/nz here ?
+    eps -= x_j * beta_new
+    return beta_new, ny, eps # could return a list [beta,ny]
 
 
 
-# assignment ops
-Emu_up = Emu.assign(sample_mu(N, Sigma2_e, Y, X, Ebeta))
 
 with tf.control_dependencies([Emu_up]):
     
@@ -219,44 +237,83 @@ with tf.control_dependencies([Emu_up]):
     ebeta_up = Ebeta.assign(ta_beta)
     nz_up = NZ.assign(ta_ny)
     with tf.control_dependencies([ebeta_up, nz_up]):
-        eps_up = epsilon.assign(Y-tf.matmul(X,Ebeta)-vEmu*Emu)
-        s2b_up = Sigma2_b.assign(sample_sigma2_b(Ebeta_,NZ,v0B,s0B))
     
 
         sess.run(NZ.assign(np.sum(ny)))
-        ew_up = Ew.assign(sample_w(M,NZ)))
+        
         #sess.run(Ebeta_.assign(Ebeta))
         sess.run(epsilon.assign(Y-tf.matmul(X,Ebeta_)-vEmu*Emu), feed_dict= {Ebeta_: Ebeta})                 
         , feed_dict= {Ebeta_: Ebeta})
                  
-        sess.run(Sigma2_e.assign(sample_sigma2_e(N,epsilon,v0E,s0E)))
-        
+# Computations
+ta_beta, ta_ny, ta_eps = new_beta(
+    Xj, epsilon, Sigma2_e,
+    Sigma2_b, Ew, Ebeta[index])
+ta_epsilon = Y - tf.matmul(x,Ebeta) - vEmu*Emu
 
+# Assignment ops
+emu_up = Emu.assign(sample_mu(N, Sigma2_e, Y, X, Ebeta))
+beta_item_assign_op = Ebeta[index].assign(ta_beta)
+ny_up = NZ.assign_add(ta_ny)
+eps_up_fl = epsilon.assign(ta_eps)
+eps_up = epsilon.assign(ta_epsilon)
+ny_reset = NZ.assign(0)
+ew_up = Ew.assign(sample_w(M,NZ))
+s2b_up = Sigma2_b.assign(sample_sigma2_b(Ebeta_,NZ,v0B,s0B))
+s2e_up = Sigma2_e.assign(sample_sigma2_e(N,epsilon,v0E,s0E))
 
-        
+up_grp = tf.group(
+    beta_item_assign_op,
+    ny_up,
+    eps_up
+)
 
-for marker in index:
-
-            sess.run(epsilon.assign_add(colx * Ebeta[marker]), feed_dict={colx: x[:,marker].reshape(N,1)})          
-            Cj = sm[marker] + Sigma2_e/Sigma2_b
-            rj = tf.tensordot(tf.transpose(colx), epsilon, 1)[0]
-            ratio = tf.exp( - ( tf.square(rj) / ( 2*Cj*Sigma2_e ))) * tf.sqrt((Sigma2_b*Cj)/Sigma2_e)
-            pij = Ew / (Ew + ratio*(1-Ew))
-            ny[marker] = sess.run(rbernoulli(pij), feed_dict={colx: x[:,marker].reshape(N,1)})
-
-            # TODO: replace with tf.cond 
-            if (ny[marker]==0):
-                Ebeta[marker]=0
-
-            elif (ny[marker]==1):
-                Ebeta[marker] = sess.run(rnorm(rj/Cj,Sigma2_e/Cj), feed_dict={colx: x[:,marker].reshape(N,1)})
-
-            sess.run(epsilon.assign_sub(colx * Ebeta[marker]), feed_dict={colx: x[:,marker].reshape(N,1)})  
-            
 
 
 # Number of Gibbs sampling iterations
 num_iter = 30
+
+with tf.Session() as sess:
+
+    # Initialize variable
+    sess.run(tf.global_variables_initializer())
+
+    # Gibbs sampler iterations
+    for i in range(num_iter):
+        print("Gibbs sampling iteration: ", i)
+        sess.run(Emu_up)
+        sess.run(ny_reset)
+        index = np.random.permutation(M)
+        for marker in index:
+
+            feed = {index:marker, Xj:X[marker]}
+            sess.run(up_grp, feed_dict=feed)
+        sess.run(emu_up)
+        sess.run(eps_up)
+        sess.run(s2b_up)
+        sess.run(s2e_up)
+        # Print operations 
+        print("\n")
+        print(sess.run(print_dict))
+        print(" ")
+        time_out = time.clock()
+        print('Time for the ', i, 'th iteration: ', time_out - time_in, ' seconds')
+        print(" ")
+        
+        
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 with tf.Session() as sess:
     
