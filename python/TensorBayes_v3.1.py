@@ -97,8 +97,8 @@ def sample_beta(x_j, eps, s2e, s2b, w, beta_old):
     ratio = tf.exp( - ( tf.square(rj) / ( 2*Cj*s2e ))) * tf.sqrt((s2b*Cj)/s2e)
     pij = w / (w + ratio*(1-w))
     toss = rbernoulli(pij)
-    def case_zero(): return 0., 0 # could return a list [beta,ny]
-    def case_one(): return rnorm(rj/Cj, s2e/Cj), 1 # could return a list [beta,ny]
+    def case_zero(): return 0., 0. # could return a list [beta,ny]
+    def case_one(): return rnorm(rj/Cj, s2e/Cj), 1. # could return a list [beta,ny]
     beta_new, incl = tf.case([(tf.not_equal(toss, 0), case_one)], default=case_zero)
     # do we handle ny/nz here ?
     eps = eps - (x_j*beta_new)
@@ -121,13 +121,14 @@ def build_toy_dataset(N, M, var_g):
 
 # Simulated data parameters
 
-N = 100       # number of data points
+N = 5000       # number of data points
 M = 10        # number of features
 var_g = 0.7   # M * var(Beta_true)
               # Var(Beta_true) = Var(g) / M
               # Var(error) = 1 - Var(g) 
 
 x, y, beta_true = build_toy_dataset(N, M, var_g)
+x = x.astype(np.float32)
 X = tf.constant(x, shape=[N,M], dtype=tf.float32)
 Y = tf.constant(y, shape=[N,1], dtype=tf.float32)
 
@@ -150,9 +151,9 @@ Y = tf.constant(y, shape=[N,1], dtype=tf.float32)
 # Variables:
 
 Emu = tf.Variable(0., dtype=tf.float32)
-Ebeta = tf.Variable(tf.zeros([M,1]), dtype=tf.float32)
-ny = tf.Variable(tf.zeros(M), dtype=tf.float32)
-NZ = tf.Variable(0, dtype=tf.int32)
+Ebeta = tf.Variable(tf.zeros([M,1], dtype=tf.float32), dtype=tf.float32)
+ny = tf.Variable(tf.zeros(M, dtype=tf.float32), dtype=tf.float32)
+NZ = tf.Variable(0., dtype=tf.float32)
 Ew = tf.Variable(0., dtype=tf.float32)
 epsilon = tf.Variable(Y, dtype=tf.float32)
 Sigma2_e = tf.Variable(tf_squared_norm(Y) / (N*0.5), dtype=tf.float32)
@@ -160,7 +161,7 @@ Sigma2_b = tf.Variable(rbeta(1.0,1.0), dtype=tf.float32)
 
 # Constants:
 
-vEmu = tf.ones([N,1])
+vEmu = tf.ones([N,1], dtype=tf.float32)
 v0E = tf.constant(0.001, dtype=tf.float32)
 v0B = tf.constant(0.001, dtype=tf.float32)
 s0B = Sigma2_b.initialized_value() / 2
@@ -169,7 +170,7 @@ s0E = Sigma2_e.initialized_value() / 2
 # Placeholders:
 Xj = tf.placeholder(tf.float32, shape=(N,1))
 Bj = tf.placeholder(tf.float32, shape=())
-index = tf.placeholder(tf.int32, shape=())
+ind = tf.placeholder(tf.int32, shape=())
 
 
 # Print stuff:
@@ -191,14 +192,14 @@ print_dict = {'Emu': Emu, 'Ew': Ew,
 # Computations
 ta_beta, ta_ny, ta_eps = sample_beta(
     Xj, epsilon, Sigma2_e,
-    Sigma2_b, Ew, Ebeta[index])
+    Sigma2_b, Ew, Ebeta[ind])
 ta_epsilon = Y - tf.matmul(X,Ebeta) - vEmu*Emu
 ta_s2b = sample_sigma2_b(Ebeta,NZ,v0B,s0B)
 ta_s2e = sample_sigma2_e(N,epsilon,v0E,s0E)
 
 # Assignment ops
 emu_up = Emu.assign(sample_mu(N, Sigma2_e, Y, X, Ebeta))
-beta_item_assign_op = Ebeta[index].assign(ta_beta)
+beta_item_assign_op = Ebeta[ind,0].assign(ta_beta)
 ny_up = NZ.assign_add(ta_ny)
 eps_up_fl = epsilon.assign(ta_eps)
 eps_up = epsilon.assign(ta_epsilon)
@@ -216,7 +217,7 @@ up_grp = tf.group(
 
 
 # Number of Gibbs sampling iterations
-num_iter = 30
+num_iter = 5000
 
 with tf.Session() as sess:
 
@@ -232,29 +233,31 @@ with tf.Session() as sess:
         index = np.random.permutation(M)
 
         for marker in index:
-
-            feed = {index:marker, Xj:X[marker]}
+            current_col = x[:,[marker]]
+            feed = {ind: marker, Xj: current_col}
             sess.run(up_grp, feed_dict=feed)
         
         sess.run(emu_up)
         sess.run(eps_up)
         sess.run(s2b_up)
         sess.run(s2e_up)
-        # Print operations 
-        print("\n")
-        print(sess.run(print_dict))
-        print(" ")
-        time_out = time.clock()
-        print('Time for the ', i, 'th iteration: ', time_out - time_in, ' seconds')
-        print(" ")
+        # # Print operations 
+        # print("\n")
+        # print(sess.run(print_dict))
+        # print(" ")
+        # time_out = time.clock()
+        # print('Time for the ', i, 'th iteration: ', time_out - time_in, ' seconds')
+        # print(" ")
         
         
         
-        # Print operations 
-        print("\n")
-        print(sess.run(print_dict))
-        print(" ")
-        time_out = time.clock()
-        print('Time for the ', i, 'th iteration: ', time_out - time_in, ' seconds')
-        print(" ")
+        # # Print operations 
+        # print("\n")
+        # print(sess.run(print_dict))
+        # print(" ")
+        # time_out = time.clock()
+        # print('Time for the ', i, 'th iteration: ', time_out - time_in, ' seconds')
+        # print(" ")
 
+total_time =   time.clock()-start_time
+print("Total time: " + str(total_time) + "s")
