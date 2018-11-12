@@ -96,17 +96,22 @@ while True:
                 print(normalized_col)
                 
                 break
+            
+        
+    
+
+
     
     
 
-toy = tf.contrib.data.CsvDataset(
-        # Creates a dataset of the current csv column
-        "ex.csv",
-        [tf.float32],
-        select_cols=[0]  # Only parse last three columns
-        )
+# toy = tf.contrib.data.CsvDataset(
+#         # Creates a dataset of the current csv column
+#         "ex.csv",
+#         [tf.float32],
+#         select_cols=[0]  # Only parse last three columns
+#         )
 
-a = np.random.choice(len(x_vals), size=batch_size)
+    a = np.random.choice(len(x_vals), size=batch_size)
 
 aa = np.transpose([x_vals[rand_index]])
 

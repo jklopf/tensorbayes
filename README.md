@@ -26,7 +26,7 @@ The code able to retrieve the injected parameters will be on the next version: `
   
 #### About `TensorBayes_v3_2.py`:    
 This version should be able to retrieve the simulated parameters and
-store the history of the sampling, as NumpyBayes_v2.py does. 
+store the history of the sampling, as `NumpyBayes_v2.py` does. 
 
 The next version will implement the tensorflow dataset API instead of
 placeholders to feed data, and will be called: `TensorBayes_v3.3.py` (doesn't exist yet).

@@ -102,7 +102,7 @@ def sample_w(M, NZ):
 def sample_beta(x_j, eps, s2e, s2b, w, beta_old):
     eps = eps + (x_j*beta_old)
     Cj = tf_squared_norm(x_j) + s2e/s2b
-    rj = tf.tensordot(tf.transpose(x_j), eps, 1)[0]
+    rj = tf.tensordot(tf.transpose(x_j), eps, 1)[0,0]
     ratio = tf.exp( - ( tf.square(rj) / ( 2*Cj*s2e ))) * tf.sqrt((s2b*Cj)/s2e)
     pij = w / (w + ratio*(1-w))
     toss = rbernoulli(pij)
@@ -166,6 +166,7 @@ TODO: 	Actually implement all the algorithm optimizations of the reference artic
 
 Emu = tf.Variable(0., dtype=tf.float32)
 Ebeta = tf.Variable(tf.zeros([M,1], dtype=tf.float32), dtype=tf.float32)
+Ny = tf.Variable(tf.zeros([M,1], dtype=tf.float32), dtype=tf.float32)
 NZ = tf.Variable(0., dtype=tf.float32)
 Ew = tf.Variable(0., dtype=tf.float32)
 epsilon = tf.Variable(Y, dtype=tf.float32)
@@ -208,21 +209,34 @@ ta_s2b = sample_sigma2_b(Ebeta,NZ,v0B,s0B)
 ta_s2e = sample_sigma2_e(N,epsilon,v0E,s0E)
 
 # Assignment ops
-emu_up = Emu.assign(sample_mu(N, Sigma2_e, Y, X, Ebeta))
-beta_item_assign_op = Ebeta[ind,0].assign(ta_beta)
-ny_up = NZ.assign_add(ta_ny)
-eps_up_fl = epsilon.assign(ta_eps)
-eps_up = epsilon.assign(ta_epsilon)
-ny_reset = NZ.assign(0)
-ew_up = Ew.assign(sample_w(M,NZ))
-s2b_up = Sigma2_b.assign(ta_s2b)
-s2e_up = Sigma2_e.assign(ta_s2e)
+# As we don't chain assignment operations, assignment does not require to return the evaluation of the new value
+# therefore, all read_value are set to False. No idea if this changes anything.
+
+emu_up = Emu.assign(sample_mu(N, Sigma2_e, Y, X, Ebeta), read_value=False)
+beta_item_assign_op = Ebeta[ind,0].assign(ta_beta) 		# when doing item assignment, read_value becomes an unexpected parameter, 
+ny_item_assign_op = Ny[ind,0].assign(ta_ny) 			# as tensorflow doesn't know what to return the single item or the whole variable
+nz_up = NZ.assign_add(ta_ny, read_value=False)
+eps_up_fl = epsilon.assign(ta_eps, read_value=False)
+eps_up = epsilon.assign(ta_epsilon, read_value=False)
+ny_reset = NZ.assign(0, read_value=False)
+ew_up = Ew.assign(sample_w(M,NZ), read_value=False)
+s2b_up = Sigma2_b.assign(ta_s2b, read_value=False)
+s2e_up = Sigma2_e.assign(ta_s2e, read_value=False)
 
 up_grp = tf.group(
     beta_item_assign_op,
-    ny_up,
+    nz_up,
     eps_up
 )
+
+'''
+Run with `read_value = True`: 63.4s
+Run with `read_value = False`: 62.2s
+We actually improves the run time by 1 second lol.
+'''
+
+
+# Sampling log operations
 
 
 
@@ -251,23 +265,23 @@ with tf.Session() as sess:
         sess.run(eps_up)
         sess.run(s2b_up)
         sess.run(s2e_up)
-        # # Print operations 
-        # print("\n")
-        # print(sess.run(print_dict))
-        # print(" ")
-        # time_out = time.clock()
-        # print('Time for the ', i, 'th iteration: ', time_out - time_in, ' seconds')
-        # print(" ")
+        # Print operations 
+        print("\n")
+        print(sess.run(print_dict))
+        print(" ")
+        time_out = time.clock()
+        print('Time for the ', i, 'th iteration: ', time_out - time_in, ' seconds')
+        print(" ")
         
         
         
-        # # Print operations 
-        # print("\n")
-        # print(sess.run(print_dict))
-        # print(" ")
-        # time_out = time.clock()
-        # print('Time for the ', i, 'th iteration: ', time_out - time_in, ' seconds')
-        # print(" ")
+        # Print operations 
+        print("\n")
+        print(sess.run(print_dict))
+        print(" ")
+        time_out = time.clock()
+        print('Time for the ', i, 'th iteration: ', time_out - time_in, ' seconds')
+        print(" ")
 
 total_time =   time.clock()-start_time
 print("Total time: " + str(total_time) + "s")
