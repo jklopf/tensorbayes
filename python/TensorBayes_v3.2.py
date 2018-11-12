@@ -102,7 +102,7 @@ def sample_w(M, NZ):
 def sample_beta(x_j, eps, s2e, s2b, w, beta_old):
     eps = eps + (x_j*beta_old)
     Cj = tf_squared_norm(x_j) + s2e/s2b
-    rj = tf.tensordot(tf.transpose(x_j), eps, 1)[0][0]
+    rj = tf.tensordot(tf.transpose(x_j), eps, 1)[0]
     ratio = tf.exp( - ( tf.square(rj) / ( 2*Cj*s2e ))) * tf.sqrt((s2b*Cj)/s2e)
     pij = w / (w + ratio*(1-w))
     toss = rbernoulli(pij)
@@ -151,6 +151,11 @@ Y = tf.constant(y, shape=[N,1], dtype=tf.float32)
 #     sm[i] = np_squared_norm(x[:,i])
 
 
+'''
+TODO: 	Actually implement all the algorithm optimizations of the reference article
+		which are not implemented here. Depends on later implementations of input pipeline.
+'''
+
 #  Parameters setup
 #
 # Distinction between constant and variables
@@ -161,7 +166,6 @@ Y = tf.constant(y, shape=[N,1], dtype=tf.float32)
 
 Emu = tf.Variable(0., dtype=tf.float32)
 Ebeta = tf.Variable(tf.zeros([M,1], dtype=tf.float32), dtype=tf.float32)
-ny = tf.Variable(tf.zeros(M, dtype=tf.float32), dtype=tf.float32)
 NZ = tf.Variable(0., dtype=tf.float32)
 Ew = tf.Variable(0., dtype=tf.float32)
 epsilon = tf.Variable(Y, dtype=tf.float32)
@@ -178,7 +182,6 @@ s0E = Sigma2_e.initialized_value() / 2
 
 # Placeholders:
 Xj = tf.placeholder(tf.float32, shape=(N,1))
-Bj = tf.placeholder(tf.float32, shape=())
 ind = tf.placeholder(tf.int32, shape=())
 
 
@@ -191,17 +194,15 @@ print_dict = {'Emu': Emu, 'Ew': Ew,
 
 
 # Tensorboard graph
+# TODO: look up what TensorBoard can do, this can be used in the end to have a graph representation of the algorithm.
+# Also, for graph clarity, operations should be named.
 
 #writer = tf.summary.FileWriter('.')
 #writer.add_graph(tf.get_default_graph())
 
-# Maybe have a flow between item assignment and regular python variable
-# to make things simple
 
 # Computations
-ta_beta, ta_ny, ta_eps = sample_beta(
-    Xj, epsilon, Sigma2_e,
-    Sigma2_b, Ew, Ebeta[ind])
+ta_beta, ta_ny, ta_eps = sample_beta(Xj, epsilon, Sigma2_e, Sigma2_b, Ew, Ebeta[ind]) # Ebeta[ind] might be replaced by using dictionnaries key/value instead.
 ta_epsilon = Y - tf.matmul(X,Ebeta) - vEmu*Emu
 ta_s2b = sample_sigma2_b(Ebeta,NZ,v0B,s0B)
 ta_s2e = sample_sigma2_e(N,epsilon,v0E,s0E)

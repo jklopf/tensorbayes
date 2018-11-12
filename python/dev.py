@@ -10,6 +10,16 @@ import numpy as np
 import tensorflow as tf
 
 
+'''
+First input pipeline which worked with two iterators, the first one being the handle on the definition of the second as in
+1. index, 2. the column
+
+In the latest version, the problem of iterating over the columns will be handled by directly transposing the dataset, for which a row will become a column.
+Tensorflow dataset API reads a batch of rows of every column from the dataset, so getting only one column at a time requires a subset of the dataset. 
+Transposition of the dataset allows using the dataset in a simpler manner: a row is now a whole column, shuffleable, batchable which also allow for easy preprocessing.
+'''
+
+
 # Get the numbers of columns in the csv:
 
 csv_in = open("ex.csv", "r")                        # open the csv
@@ -22,6 +32,8 @@ print("Number of columns in the csv: " + str(ncol)) # print the # of columns
 col_list = tf.data.Dataset.range(ncol).shuffle(buffer_size=ncol)
 col_next = col_list.make_one_shot_iterator().get_next()
 
+
+# Function to preprocess a column vector
 def scale_zscore(vector):
     mean, var = tf.nn.moments(vector, axes=[0])
     normalized_col = tf.map_fn(lambda x: (x - mean)/tf.sqrt(var), vector)
@@ -105,6 +117,22 @@ sess.close()
 
 from __future__ import print_function
 #import tensorflow as tf
+
+
+'''
+For history in the thesis: this is the step where I tried to use TensorFlow Autograph
+Didn't worked because of dependency problems:
+
+missing definitions of calls ag__.utils.run_cond() and ag__.for_stmt() when using tensorflow 1.11
+
+Those problems might be fixed in the newest version of tensorflow (1.12)
+
+That approach seems to be blackboxy, but might be actually more efficient than my way of coding it.
+A for loop shouldn't exist in a tensorflow program and should be converted to a tf.while() loop.
+The general reason: we want to stay in the graph and leave it as little as possible.
+
+'''
+
 
 def tf__ftemp(eps, beta, x):
     global Sigma2_e
