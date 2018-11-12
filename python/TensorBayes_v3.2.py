@@ -6,15 +6,13 @@ import time
 tfd = tfp.distributions
 
 '''
-This version is actually the first one able to compute in a linear, normal manner.
-This is due to proper graph building and graph running separation. As a reminder,
-generally speaking, all calls beginning with 'tf.' should be outside of a session (graph computation elements).
+This version should be able to retrieve the simulated parameters and
+store the history of the sampling, as NumpyBayes_v2.py does. 
 
-However, this version do not actually retrieve the simulated parameters of 
-the dataset (sigma2_b goes to inf where it should be near Var(g)/M).
+The next version will implement the tensorflow dataset API instead of
+placeholders to feed data, and will be called:
+- TensorBayes_v3.3.py
 
-The code able to retrieve the injected parameters will be on the next version:
-- TensorBayes_v3.2.py
 '''
 # Start time measures
 start_time = time.clock()
