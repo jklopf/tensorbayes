@@ -22,9 +22,9 @@ The code able to retrieve the injected parameters will be on the next version: `
 
 ### Under active development:
 
-- `TensorBayes_v3_2.py`
+- `TensorBayes_v3.2.py`
   
-#### About `TensorBayes_v3_2.py`:    
+#### About `TensorBayes_v3.2.py`:    
 This version should be able to retrieve the simulated parameters and
 store the history of the sampling, as `NumpyBayes_v2.py` does. 
 
