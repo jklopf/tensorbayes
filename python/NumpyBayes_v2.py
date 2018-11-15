@@ -176,6 +176,7 @@ for i in range(num_iter):
         rj = np.dot(x[:,marker], epsilon)
         ratio = np.sqrt((sigma2_b * Cj)/sigma2_e)*np.exp(-(np.square(rj)/(2*Cj*sigma2_e)))
         pij = Ew/(Ew + ratio*(1-Ew))
+        # print('pij: ', pij)
         ny[marker] = rbernouilli(pij)
         if (ny[marker] == 0):
             
@@ -190,6 +191,7 @@ for i in range(num_iter):
     
     NZ = np.sum(ny)
     Ew = sample_w(M, NZ)
+    # print("Ew: ", Ew)
     epsilon = y - np.matmul(x,Ebeta) - vEmu*Emu
     sigma2_b = sample_sigma2_b(Ebeta, NZ, v0B, s0B)
     sigma_b_log.append(sigma2_b)

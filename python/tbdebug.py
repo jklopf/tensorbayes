@@ -15,6 +15,23 @@ placeholders to feed data, and will be called:
 - TensorBayes_v3.3.py
 
 '''
+
+
+# sess = tf.Session()
+# sess.close()
+
+
+# a = tf.constant([1,2,3,4,5])
+# print_op = tf.print(a)
+# with tf.control_dependencies([print_op]):
+#     out = tf.add(a, a)
+# sess.run(out)
+
+
+
+
+
+
 # Start time measures
 start_time = time.clock()
 
@@ -96,7 +113,7 @@ def sample_sigma2_e(N, epsilon, v0E, s0E):
 
 # sample mixture weight
 def sample_w(M, NZ):
-    sample = rbeta(NZ+1, M-NZ+1)
+    sample = rbeta(1 + NZ, 1 + M - NZ)
     return sample
 
 # sample a beta
@@ -106,17 +123,21 @@ def sample_beta(x_j, eps, s2e, s2b, w, beta_old):
     rj = tf.tensordot(tf.transpose(x_j), eps, 1)[0,0]
     ratio = tf.exp( - ( tf.square(rj) / ( 2*Cj*s2e ))) * tf.sqrt((s2b*Cj)/s2e)
     pij = w / (w + ratio*(1-w))
-    toss = rbernoulli(pij)
+    pij_text = tf.constant("pij: ")
+    pij_print = tf.print(pij_text ,pij)
+
+    with tf.control_dependencies([pij_print]):
+        toss = rbernoulli(pij)
     def case_zero():
         return 0., 0. # could return a list [beta,ny]
     def case_one():
         return rnorm(rj/Cj, s2e/Cj), 1. # could return a list [beta,ny]
-    beta_new, ny_new = tf.cond(tf.equal(toss,1),case_one, case_zero)
+    beta_new, ny_new = tf.cond(tf.equal(toss,1), case_one, case_zero)
     #beta_new, incl = tf.case([(tf.equal(toss, 0), case_zero)], default=case_one)
     # maybe use tf.cond since we only got 1 pair ?
     # do we handle ny/nz here ?
     eps = eps - (x_j*beta_new)
-    return beta_new, ny_new, eps # could return a list [beta,ny]
+    return beta_new, ny_new, eps # could return a list [beta,ny]w
 
 
 ## Simulate data
@@ -137,13 +158,15 @@ def build_toy_dataset(N, M, var_g):
 
 N = 5000       # number of data points
 M = 10        # number of features
+#N = tf.constant(n) # tensor equivalent
+#M = tf.constant(m) # tensor equivalent
 var_g = 0.7   # M * var(Beta_true)
               # Var(Beta_true) = Var(g) / M
               # Var(error) = 1 - Var(g) 
 
 x, y, beta_true = build_toy_dataset(N, M, var_g)
-X = tf.constant(x, shape=[N,M], dtype=tf.float32)
-Y = tf.constant(y, shape=[N,1], dtype=tf.float32)
+X = tf.constant(x, shape=[N,M], dtype=tf.float32, name='X')
+Y = tf.constant(y, shape=[N,1], dtype=tf.float32, name='Y')
 
 # Could be implemented:
 # building datasets using TF API without numpy
@@ -168,26 +191,29 @@ TODO: 	Actually implement all the algorithm optimizations of the reference artic
 
 # Variables:
 
-Emu = tf.Variable(0., dtype=tf.float32)
-Ebeta = tf.Variable(tf.zeros([M,1], dtype=tf.float32), dtype=tf.float32)
-Ny = tf.Variable(tf.zeros(M, dtype=tf.float32), dtype=tf.float32)
-NZ = tf.Variable(0., dtype=tf.float32)
-Ew = tf.Variable(0., dtype=tf.float32)
-epsilon = tf.Variable(Y, dtype=tf.float32)
-Sigma2_e = tf.Variable(tf_squared_norm(Y) / (N*0.5), dtype=tf.float32)
-Sigma2_b = tf.Variable(rbeta(1., 1.), dtype=tf.float32)
+Emu = tf.Variable(0., dtype=tf.float32, name='Emu')
+Ebeta = tf.Variable(tf.zeros([M,1], dtype=tf.float32), dtype=tf.float32, name='Ebeta')
+Ny = tf.Variable(tf.zeros(M, dtype=tf.float32), dtype=tf.float32, name='Ny')
+NZ = tf.Variable(0., dtype=tf.float32, name='NZ')
+Ew = tf.Variable(0., dtype=tf.float32, name='Ew')
+epsilon = tf.Variable(Y, dtype=tf.float32, name='epsilon')
+
+s2e_initial_value = np_squared_norm(y) / (N*0.5)
+s2b_initial_value = np.random.beta(1,1)
+Sigma2_e = tf.Variable(s2e_initial_value, dtype=tf.float32, name='Sigma2_e')
+Sigma2_b = tf.Variable(s2b_initial_value, dtype=tf.float32, name='Sigma2_b')
 
 # Constants:
 
-vEmu = tf.ones([N,1], dtype=tf.float32)
-v0E = tf.constant(0.001, dtype=tf.float32)
-v0B = tf.constant(0.001, dtype=tf.float32)
-s0B = Sigma2_b.initialized_value() / 2
-s0E = Sigma2_e.initialized_value() / 2
+vEmu = tf.ones([N,1], dtype=tf.float32, name='vEmu')
+v0E = tf.constant(0.001, dtype=tf.float32, name='v0E')
+v0B = tf.constant(0.001, dtype=tf.float32, name='v0B')
+s0E = tf.constant(s2e_initial_value / 2, dtype=tf.float32, name='s0E')
+s0B = tf.constant(s2b_initial_value / 2, dtype=tf.float32, name='s0B')
 
 # Placeholders:
-Xj = tf.placeholder(tf.float32, shape=(N,1))
-ind = tf.placeholder(tf.int32, shape=())
+Xj = tf.placeholder(tf.float32, shape=(N,1), name='col_ph')
+ind = tf.placeholder(tf.int32, shape=(), name='ind_ph')
 
 
 # Print stuff:
@@ -212,6 +238,12 @@ ta_epsilon = Y - tf.matmul(X,Ebeta) - vEmu*Emu
 ta_s2b = sample_sigma2_b(Ebeta,NZ,v0B,s0B)
 ta_s2e = sample_sigma2_e(N,epsilon,v0E,s0E)
 ta_nz = tf.reduce_sum(Ny)
+ta_ew = sample_w(M, NZ)
+
+
+# Print ops
+beta_ny_text = tf.constant("beta ; ny:")
+print_op = tf.print(beta_ny_text,ta_beta, ta_ny)
 
 # Assignment ops
 # As we don't chain assignment operations, assignment does not require to return the evaluation of the new value
@@ -223,11 +255,12 @@ ny_item_assign_op = Ny[ind].assign(ta_ny) 			# as tensorflow doesn't know what t
 nz_up = NZ.assign(ta_nz, read_value=False)
 eps_up_fl = epsilon.assign(ta_eps, read_value=False)
 eps_up = epsilon.assign(ta_epsilon, read_value=False)
-ew_up = Ew.assign(sample_w(M,NZ), read_value=False)
+ew_up = Ew.assign(ta_ew, read_value=False)
 s2b_up = Sigma2_b.assign(ta_s2b, read_value=False)
 s2e_up = Sigma2_e.assign(ta_s2e, read_value=False)
 
-up_grp = tf.group(beta_item_assign_op, ny_item_assign_op, eps_up)
+with tf.control_dependencies([print_op]):
+    up_grp = tf.group(beta_item_assign_op, ny_item_assign_op, eps_up)
 
 
 
@@ -244,36 +277,33 @@ Run with `read_value = False`: 62.2s
 
 
 # Number of Gibbs sampling iterations
-num_iter = 5000
+num_iter = 5
 
-with tf.Session() as sess:
-
-    # Initialize variable
-    sess.run(tf.global_variables_initializer())
-
-    # Gibbs sampler iterations
-    for i in range(num_iter): # TODO: replace with tf.while ?
-        print("Gibbs sampling iteration: ", i)
-        sess.run(emu_up)
-        #sess.run(ny_reset)
-        index = np.random.permutation(M)
-
-        for marker in index:
-            current_col = x[:,[marker]]
-            feed = {ind: marker, Xj: current_col}
-            sess.run(up_grp, feed_dict=feed)
-        sess.run(nz_up)
-        sess.run(ew_up)
-        sess.run(eps_up)
-        sess.run(s2b_up)
-        sess.run(s2e_up)
-
-        # Print operations 
-        print(sess.run(print_dict))
-    
-    # End of Gibbs sampling
-    print(sess.run(Ebeta), beta_true)
+sess = tf.Session()
+# sess = tf_debug.TensorBoardDebugWrapperSession(sess, "wl5s-253-236.unil.ch:6064")
 
 
-total_time =   time.clock()-start_time
-print("Total time: " + str(total_time) + "s")
+
+# Initialize variable
+sess.run(tf.global_variables_initializer())
+
+# Gibbs sampler iterations
+for i in range(num_iter):
+    print("Gibbs sampling iteration: ", i)
+    sess.run(emu_up)
+    #sess.run(ny_reset)
+    index = np.random.permutation(M)
+
+    for marker in index:
+        current_col = x[:,[marker]]
+        feed = {ind: marker, Xj: current_col}
+        sess.run(up_grp, feed_dict=feed)
+    sess.run(nz_up)
+    sess.run(ew_up)
+    sess.run(eps_up)
+    sess.run(s2b_up)
+    sess.run(s2e_up)
+    # Print operations 
+    print(sess.run(print_dict))
+
+sess.close()
