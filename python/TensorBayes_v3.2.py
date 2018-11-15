@@ -4,10 +4,9 @@ import tensorflow_probability as tfp
 import numpy as np
 import time
 tfd = tfp.distributions
-from tensorflow.python import debug as tf_debug
 
 '''
-This version should be able to retrieve the simulated parameters and
+This version is able to retrieve the simulated parameters and
 store the history of the sampling, as NumpyBayes_v2.py does. 
 
 The next version will implement the tensorflow dataset API instead of
@@ -129,7 +128,7 @@ def build_toy_dataset(N, M, var_g):
     beta_true = np.random.normal(0, sigma_b , M)
     x = sigma_b * np.random.randn(N, M) 
     y = np.dot(x, beta_true) + np.random.normal(0, sigma_e, N)
-    return x, y, beta_true
+    return x, y, beta_true.reshape(M,1)
 
 
 
@@ -213,6 +212,8 @@ ta_s2b = sample_sigma2_b(Ebeta,NZ,v0B,s0B)
 ta_s2e = sample_sigma2_e(N,epsilon,v0E,s0E)
 ta_nz = tf.reduce_sum(Ny)
 
+
+
 # Assignment ops
 # As we don't chain assignment operations, assignment does not require to return the evaluation of the new value
 # therefore, all read_value are set to False. No idea if this changes anything.
@@ -233,18 +234,20 @@ up_grp = tf.group(beta_item_assign_op, ny_item_assign_op, eps_up)
 
 
 
-'''
-Run with `read_value = True`: 63.4s
-Run with `read_value = False`: 62.2s
-'''
+
+# Run with `read_value = True`: 63.4s
+# Run with `read_value = False`: 62.2s
 
 
-# Sampling log operations
 
+# Log definition:
+param_log = [] # order: Sigma2_e, Sigma2_b
+beta_log = [] # as rank 1 vector
 
 
 # Number of Gibbs sampling iterations
 num_iter = 5000
+burned_samples_threshold = 2000
 
 with tf.Session() as sess:
 
@@ -252,8 +255,10 @@ with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
 
     # Gibbs sampler iterations
+    print("Beginning of sampling: each dot = 500 iterations", '\n')
     for i in range(num_iter): # TODO: replace with tf.while ?
-        print("Gibbs sampling iteration: ", i)
+        if(i%500 == 0): print(".",end='', flush=True)
+        
         sess.run(emu_up)
         #sess.run(ny_reset)
         index = np.random.permutation(M)
@@ -269,11 +274,33 @@ with tf.Session() as sess:
         sess.run(s2e_up)
 
         # Print operations 
-        print(sess.run(print_dict))
-    
-    # End of Gibbs sampling
-    print(sess.run(Ebeta), beta_true)
+        # print(sess.run(print_dict))
 
+        # Logs
+        if(i > burned_samples_threshold):
+            param_log.append(sess.run([Sigma2_e, Sigma2_b]))
+            beta_log.append(np.array(sess.run(Ebeta)).reshape(M))
 
-total_time =   time.clock()-start_time
-print("Total time: " + str(total_time) + "s")
+print(" ")
+print("End of sampling" + '\n')
+
+# Time elapsed
+total_time =   np.round(time.clock() - start_time, 5)
+print("Time elapsed: " + str(total_time) + "s" + '\n')
+
+# Results
+param_log = np.array(param_log)
+mean_Sigma2_e = np.round(np.mean(param_log[:,0]),5)
+mean_Sigma2_b = np.round(np.mean(param_log[:,1]),5)
+mean_betas = np.round(np.mean(beta_log, axis=0),5).reshape([M,1])
+
+# Results printing
+print("Parameters: " + '\n')
+#print(" ")
+print("Mean Sigma2_e:", mean_Sigma2_e,'\t', "Expected Sigma2_e:", 1-var_g)
+print("Mean Sigma2_b:", mean_Sigma2_b,'\t', "Expected Sigma2_b:", var_g / M, "\n")
+print("Coefficients:" + '\n')
+print("Computed" + '\t' + '\t' + "Expected" )
+for i in range(M):
+    print(mean_betas[i,0], '\t', '\t', beta_true[i,0] )
+
