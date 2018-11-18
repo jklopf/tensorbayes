@@ -16,6 +16,10 @@ This version is able to compute normally and retrieve the parameters as `NumpyBa
 - `NumpyBayes_v2.py`: ~ 10s
 - `TensorBayes_v3.2.py`: ~ 60s
 
+#### Google collaboratory `TensorBayes_v3.2.py` runtimes:
+- CPU: ~ 60s
+- GPU (w/o memory growth): ~ 160s
+- TPU: ~ 50s
 
 
 ### Under active development:

@@ -10,8 +10,6 @@ import numpy as np
 #from scipy.stats import invgamma
 import time
 from sklearn import preprocessing
-import tensorflow
-from tensorflow.contrib import autograph
 
 
 # Timer
@@ -37,8 +35,6 @@ start_time = time.clock()
 def rinvchisq(df, scale):
     sample = (df * scale)/np.random.chisquare(df)
     return sample
-
-
 
 # rnorm is defined using the variance (i.e sigma^2)
 def rnorm(mean, var):
@@ -165,51 +161,39 @@ sigma_e_log = []
 sigma_b_log = []
 beta_log = []
 
-def for_loop(nfeat, Ebeta, x, sigma2_e, sigma2_b, epsilon, sm,Ew):
-    M = nfeat
-    acompute = 0
-    asample = 0
-    atoss = 0
-    index = [2] * M
-    ny = [0] * M
+
+
+for i in range(num_iter):
+    
+    time_in = time.clock()
+    #Emu = sample_mu(N, sigma2_e, y, x, Ebeta)
+    index = np.random.permutation(M)
+    print(".", flush=True, end='')
+    
     for marker in index:
         #print(marker, end=" ", flush=True)
         epsilon = epsilon + x[:,marker] * Ebeta[marker]
         Cj = sm[marker] + sigma2_e/sigma2_b
-        rj = x[:,marker]* epsilon
-        ratio = acompute
+        rj = np.dot(x[:,marker], epsilon)
+        ratio = np.sqrt((sigma2_b * Cj)/sigma2_e)*np.exp(-(np.square(rj)/(2*Cj*sigma2_e)))
         pij = Ew/(Ew + ratio*(1-Ew))
-        ny[marker] = asample
+        # print('pij: ', pij)
+        ny[marker] = rbernouilli(pij)
         if (ny[marker] == 0):
             
             Ebeta[marker] = 0
             
         elif (ny[marker] == 1):
             
-            Ebeta[marker] = atoss
+            Ebeta[marker] = rnorm(rj/Cj, sigma2_e/Cj)
         
         epsilon = epsilon - x[:,marker] * Ebeta[marker]
     
-    return Ebeta,np.sum(ny)
-    
-
-for i in range(num_iter):
-    
-    time_in = time.clock()
-    Emu = sample_mu(N, sigma2_e, y, x, Ebeta)
-    print("Gibbs sampling iteration:", i)
-    #print("Current marker:")
-    Ebeta, NZ = for_loop(Ebeta,
-                         x,
-                         sigma2_e,
-                         sigma2_b,
-                         epsilon,
-                         sm,
-                         Ew)
     
     NZ = np.sum(ny)
     Ew = sample_w(M, NZ)
-    epsilon = y - np.matmul(x,Ebeta) - vEmu*Emu
+    # print("Ew: ", Ew)
+    #epsilon = y - np.matmul(x,Ebeta) - vEmu*Emu
     sigma2_b = sample_sigma2_b(Ebeta, NZ, v0B, s0B)
     sigma_b_log.append(sigma2_b)
     sigma2_e = sample_sigma2_e(N, epsilon, v0E, s0E)
@@ -221,8 +205,8 @@ for i in range(num_iter):
     
     if(i>4994):
         print("")
-        print("Emu: {}, Ew: {}, NZ: {}, sigma2_e: {}, sigma2_b: {}".format(
-                round(Emu,5),round(Ew,5),NZ, round(sigma2_e,5), round(sigma2_b,5)))
+        print("Ew: {}, NZ: {}, sigma2_e: {}, sigma2_b: {}".format(
+                round(Ew,5),NZ, round(sigma2_e,5), round(sigma2_b,5)))
         print("")
         print("Time for the {}th generation: {}".format(i, elapsed_time))
         print("")
@@ -246,7 +230,6 @@ print("mean sigma2_e:" + str(np.mean(sigma_e_log[2500:5000])))
 print("mean sigma2_b:" + str(np.mean(sigma_b_log[2500:5000])))
 
 
-print(autograph.to_code(for_loop))
 
 
 
