@@ -52,7 +52,7 @@ As the conditions runned above represent a relatively small dataset, this implem
 
 #### About `TensorBayes_v4.2.py`:    
 
-This version implements `tf.control_dependencies` optimizations in order to minimize to number of `sess.run()` calls (i.e leave the graph a minimal amount of time). As the consumed dataset do not exceed the 2GB limit, copy avoidance is not implemented.
+This version implements `tf.control_dependencies` optimizations in order to minimize to number of `sess.run()` calls (i.e leave the graph a minimal amount of time). As the consumed dataset do not exceed the 2GB limit, copy avoidance is not implemented. The `tf.control_dependencies` implementation reduces the runtime by ~ 3s.
 
 #### About `TensorBayes_v5.py`:   
 This version will implements all the optimizations as in `TensorBayes_v4.2.py`, but will stream and read data from disk.

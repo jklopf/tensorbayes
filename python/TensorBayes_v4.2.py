@@ -254,7 +254,7 @@ with tf.Session() as sess:
                 # End of full pass, update parameters
                 sess.run(param_up)
 
-                # Exit while loop to enter next gibb iteration
+                # Exit while loop to enter next Gibbs iteration
                 break
             
         # Logs
