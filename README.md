@@ -7,11 +7,7 @@ Jonathan Klopfenstein
 ### Working versions:
 
 - Python (NumPy) based: `NumPyBayes_v3.py`
-- TensorFlow based: `TensorBayes_v4.py`
-
-#### About `TensorBayes_v4.py`:    
-This version is able to compute normally and retrieve the parameters as `NumPyBayes_v3.py` does,
-and implements the TensorFlow dataset API. Compared to the previous version (`TensorBayes_v3.3.py`), runtime has improved by 10 seconds.
+- TensorFlow based: `TensorBayes_v4.2.py`
 
 ### Runtimes (on MacBook Air CPU, 2.2GHz i7):
 
