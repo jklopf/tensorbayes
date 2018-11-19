@@ -26,6 +26,8 @@ and implements the TensorFlow dataset API.
 | GPU - w/o memory growth                                           	| ~ 160s 	|      	| ~ 195s 	|      	|
 | TPU                                                               	| ~ 50s  	|      	| ~ 50s  	|      	|
 
+Note: those runtime measurements are to be taken with caution as the benchmarking approach used is subject to changes.
+
 ### Under active development:
 
 - `TensorBayes_v4.1.py`
