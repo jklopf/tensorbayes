@@ -20,7 +20,7 @@ and implements the TensorFlow dataset API.
 - `TensorBayes_v4.py`: ~ 50s
 
 #### Google collaboratory runtimes:
-| Runtimes for TensorBayes versions in seconds 	| v3.2   	| v3.3 	| v4     	| v4.1 	|
+| Runtimes for TensorBayes versions 	| v3.2   	| v3.3 	| v4     	| v4.1 	|
 |:-----------------------------------------------------------------:	|--------	|------	|--------	|------	|
 | CPU                                                               	| ~ 60s  	|      	| ~ 45s  	|      	|
 | GPU - w/o memory growth                                           	| ~ 160s 	|      	| ~ 195s 	|      	|
