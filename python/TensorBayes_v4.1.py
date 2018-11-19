@@ -24,10 +24,10 @@ tf.reset_default_graph()
 # Seed setting for reproducable research.
 
 # Set numpy seed
-np.random.seed(1234)
+np.random.seed(123)
 
 # Set graph-level seed
-tf.set_random_seed(1234)
+tf.set_random_seed(123)
 
 
 ## Util functions
@@ -135,17 +135,25 @@ var_g = 0.7   # genetic variance parameter
 
 x, y, beta_true = build_toy_dataset(N, M, var_g)
 x = np.transpose(x)
-X = tf.constant(x, shape=[M,N], dtype=tf.float32) # /!\ shape is now [M,N] /!\
+# X = tf.constant(x, shape=[M,N], dtype=tf.float32) # /!\ shape is now [M,N] /!\ | DEPRECATED
 Y = tf.constant(y, shape=[N,1], dtype=tf.float32)
 
 ## Dataset API implementation
 
+# Specific to consuming Numpy arrays:
+# to avoid copy generation, have a placeholder for the dataset
+# and feed it in the iterator initialization as in 'Importing data' tensorflow guide.
+x_placeholder = tf.placeholder(tf.float32, shape = [M,N])
+
 data_index = tf.data.Dataset.range(M) # reflect which column was selected at random
-data_x = tf.data.Dataset.from_tensor_slices(X) # reflects the randomly selected column
+data_x = tf.data.Dataset.from_tensor_slices(x_placeholder) # reflects the randomly selected column
 data = tf.data.Dataset.zip((data_index, data_x)).shuffle(M) # zip together and shuffle them
 iterator = data.make_initializable_iterator() # reinitializable iterator: initialize at each gibbs iteration
 ind, col = iterator.get_next() # dataset element
 colx = tf.reshape(col, [N,1]) # reshape the array element as a column vector
+
+
+
 
 
 # Could be implemented:
@@ -237,7 +245,7 @@ with tf.Session() as sess:
 
             
         # While loop: dataset full pass
-        sess.run(iterator.initializer)        
+        sess.run(iterator.initializer, feed_dict={x_placeholder: x})        
         while True: # Loop on 'col_next', the queue of column iterator
             try: # Run Ebeta item assign op
 

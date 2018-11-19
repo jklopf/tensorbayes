@@ -1,49 +1,58 @@
 # TensorBayes
-Repositery for Master project:
+Repository for Master project:
 
 ## Development of a software implementing Bayesian association studies for researchers    
 Jonathan Klopfenstein
 
 ### Working versions:
 
-- Python (Numpy) based: `NumpyBayes_v3.py`
+- Python (NumPy) based: `NumPyBayes_v3.py`
 - TensorFlow based: `TensorBayes_v4.py`
 
 #### About `TensorBayes_v4.py`:    
-This version is able to compute normally and retrieve the parameters as `NumpyBayes_v3.py` does,
+This version is able to compute normally and retrieve the parameters as `NumPyBayes_v3.py` does,
 and implements the TensorFlow dataset API. Compared to the previous version (`TensorBayes_v3.3.py`), runtime has improved by 10 seconds.
 
 ### Runtimes (on MacBook Air CPU, 2.2GHz i7):
 
-Conditions: Number of samples N = 5000, number of covariates M = 10, number of Gibbs sampling iterations = 5000.
+Conditions: number of samples N = 5000, number of covariates M = 10, number of Gibbs sampling iterations = 5000.
 
-- `NumpyBayes_v2.py`: ~ 10s
-- `NumpyBayes_v3.py`: ~ 8s
-- `TensorBayes_v3.3.py`: ~ 60s
+- `NumPyBayes_v2.py`: ~ 10s
+- `NumPyBayes_v3.py`: ~ 8s
+- `TensorBayes_v3.2.py`: ~ 60s
+- `TensorBayes_v3.3.py`: ~ 56s
 - `TensorBayes_v4.py`: ~ 50s
+- `TensorBayes_v4.1.py`: ~ 53s
+- `TensorBayes_v4.2.py`: ~ 47s
 
-#### Google collaboratory runtimes:
-| Runtimes for TensorBayes versions 	| v3.2   	| v3.3 	| v4     	| v4.1 	|
+#### Google collaboratory runtime (in progress):
+| Runtime for TensorBayes versions 	| v3.2   	| v3.3 	| v4     	| v4.1 	|
 |:-----------------------------------------------------------------:	|--------	|------	|--------	|------	|
 | CPU                                                               	| ~ 60s  	|      	| ~ 45s  	|      	|
 | GPU - w/o memory growth                                           	| ~ 160s 	|      	| ~ 195s 	|      	|
 | TPU                                                               	| ~ 50s  	|      	| ~ 50s  	|      	|
 
-Note: those runtime measurements are to be taken with caution as the benchmarking approach used is subject to changes.
+Note: those runtime measurements are to be taken with caution as the benchmarking method used is subject to changes.
 
 ### Under active development:
 
-- `TensorBayes_v4.1.py`
-- `TensorBayes_v4.2.py`
+- `TensorBayes_v5.py`
+
+#### About `TensorBayes_v3.3.py` and `NumPyBayes_v3.py`:
+Those versions no longer compute whole dataset matrix multiplication that were needed when sampling the mean (`Emu`) and re-updating the residuals (`epsilon`) after a dataset full pass. Therefore, the mean is no longer sampled and the residuals are updated only during a full pass. This decreases the runtimes of `NumPyBayes_v3.py` and `TensorBayes_v3.3.py` of ~ 2s and ~ 4s, respectively, compared to the previous versions.
   
 #### About `TensorBayes_v4.1.py`:    
 
-This version will implement the tensorflow dataset API as well as further optimizations:
-- Control dependecies
-- Copy avoidance
+This version implements the TensorFlow dataset API as well as further optimizations:
+- Copy avoidance: When consuming NumPy arrays, the data are embedded in one or more `tf.constant` operations. 
+> This works well for a small dataset, but wastes memory---because the contents of the array will be copied multiple times---and can run into the 2GB limit for the tf.GraphDef protocol buffer.    
+>  -[Importing data guide](https://www.tensorflow.org/guide/datasets#consuming_numpy_arrays) of TensorFlow documentation.
 
+As the conditions runned above represent a relatively small dataset, this implementation is not required and actually increases the runtime by approximately 3 seconds. However, if consuming large arrays, this implementation might be required.
 
 #### About `TensorBayes_v4.2.py`:    
 
-This version will implements all the optimizations as in `TensorBayes_v4.1.py`, but will stream and read data from disk.
+This version implements `tf.control_dependencies` optimizations in order to minimize to number of `sess.run()` calls (i.e leave the graph a minimal amount of time). As the consumed dataset do not exceed the 2GB limit, copy avoidance is not implemented.
 
+#### About `TensorBayes_v5.py`:   
+This version will implements all the optimizations as in `TensorBayes_v4.2.py`, but will stream and read data from disk.

@@ -13,6 +13,8 @@ placeholders to feed data. Compared to other tensorflow-based version, the runti
 It also implements algorithm optimization, where whole dataset matrice multiplication are avoided:
 Emu is not sampled anymore.
 epsilon is updated only during the dataset full pass, and not also after.
+
+It also implements control dependencies, to minimize the number of sess.run() calls.
 '''
 # Start time measures
 start_time = time.clock()
@@ -55,7 +57,8 @@ def rbeta(a, b):
     sample = dist.sample()
     return sample
 
-def rinvchisq(df, scale): # scale factor = tau^2
+def rinvchisq(df, scale):
+	# scale factor = tau^2
     dist = tfd.Chi2(df)
     sample = (df * scale)/dist.sample()
     return sample
@@ -204,15 +207,18 @@ ta_beta, ta_ny, ta_eps = sample_beta(colx, epsilon, Sigma2_e, Sigma2_b, Ew, Ebet
 beta_item_assign_op = Ebeta[ind,0].assign(ta_beta) 		# when doing item assignment, read_value becomes an unexpected parameter, 
 ny_item_assign_op = Ny[ind].assign(ta_ny)               # as tensorflow doesn't know what to return the single item or the whole variable
 eps_up_fl = epsilon.assign(ta_eps, read_value=False)
-up_grp = tf.group(beta_item_assign_op, ny_item_assign_op, eps_up_fl)
+fullpass = tf.group(beta_item_assign_op, ny_item_assign_op, eps_up_fl)
 
-nz_up = NZ.assign(tf.reduce_sum(Ny), read_value=False)
-ew_up = Ew.assign(sample_w(M,NZ), read_value=False)
-s2b_up = Sigma2_b.assign(sample_sigma2_b(Ebeta,NZ,v0B,s0B), read_value=False)
 s2e_up = Sigma2_e.assign(sample_sigma2_e(N,epsilon,v0E,s0E), read_value=False)
-#emu_up = Emu.assign(sample_mu(N, Sigma2_e, Y, X, Ebeta), read_value=False) | DEPRECATED
-#eps_up = epsilon.assign(ta_epsilon, read_value=False) | DEPRECATED
+nz_up = NZ.assign(tf.reduce_sum(Ny), read_value=False)
+first_round = tf.group(nz_up,s2e_up)
 
+# Control dependencies:
+with tf.control_dependencies([first_round]):
+	ew_up = Ew.assign(sample_w(M,NZ), read_value=False)
+	s2b_up = Sigma2_b.assign(sample_sigma2_b(Ebeta,NZ,v0B,s0B), read_value=False)
+
+param_up = tf.group(ew_up, s2b_up)
 # Logs definition:
 param_log = [] # order: Sigma2_e, Sigma2_b
 beta_log = [] # as rank 1 vector
@@ -241,15 +247,12 @@ with tf.Session() as sess:
         while True: # Loop on 'col_next', the queue of column iterator
             try: # Run Ebeta item assign op
 
-                sess.run(up_grp)
+                sess.run(fullpass)
 
             except tf.errors.OutOfRangeError:
 
                 # End of full pass, update parameters
-                sess.run(nz_up)
-                sess.run(ew_up)
-                sess.run(s2b_up)
-                sess.run(s2e_up)
+                sess.run(param_up)
 
                 # Exit while loop to enter next gibb iteration
                 break
