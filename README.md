@@ -13,16 +13,18 @@ Jonathan Klopfenstein
 This version is able to compute normally and retrieve the parameters as `NumpyBayes_v3.py` does,
 and implements the TensorFlow dataset API.
 
-### Runtimes:
+### Runtimes (on MacBook Air CPU, 2.2GHz i7):
 - `NumpyBayes_v2.py`: ~ 10s
+- `NumpyBayes_v3.py`: ~ 8s
 - `TensorBayes_v3.3.py`: ~ 60s
 - `TensorBayes_v4.py`: ~ 50s
 
-#### Google collaboratory `TensorBayes_v3.2.py` runtimes:
-- CPU: ~ 60s
-- GPU (w/o memory growth): ~ 160s
-- TPU: ~ 50s
-
+#### Google collaboratory runtimes:
+| Runtimes for TensorBayes versions in seconds 	| v3.2   	| v3.3 	| v4     	| v4.1 	|
+|:-----------------------------------------------------------------:	|--------	|------	|--------	|------	|
+| CPU                                                               	| ~ 60s  	|      	| ~ 45s  	|      	|
+| GPU - w/o memory growth                                           	| ~ 160s 	|      	| ~ 195s 	|      	|
+| TPU                                                               	| ~ 50s  	|      	| ~ 50s  	|      	|
 
 ### Under active development:
 

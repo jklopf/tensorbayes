@@ -198,26 +198,13 @@ for i in range(num_iter):
     sigma_b_log.append(sigma2_b)
     sigma2_e = sample_sigma2_e(N, epsilon, v0E, s0E)
     sigma_e_log.append(sigma2_e)
-    
-    # Print ops
-    time_out = time.clock()
-    elapsed_time = time_out - time_in
-    
-    if(i>4994):
-        print("")
-        print("Ew: {}, NZ: {}, sigma2_e: {}, sigma2_b: {}".format(
-                round(Ew,5),NZ, round(sigma2_e,5), round(sigma2_b,5)))
-        print("")
-        print("Time for the {}th generation: {}".format(i, elapsed_time))
-        print("")
-        
+            
     if(i > 2000):
         beta_log.append(Ebeta.reshape(M))
         
     
     
-    
-    
+# Print results
         
 print("mean Ebeta" +  "\t" + "     ", '   ny' + '\t'+ ' beta_true')
 for i in range(M):
