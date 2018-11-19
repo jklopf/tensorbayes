@@ -35,7 +35,7 @@ Note: those runtime measurements are to be taken with caution as the benchmarkin
 - `TensorBayes_v5.py`
 
 #### About `TensorBayes_v3.3.py` and `NumPyBayes_v3.py`:
-Those versions no longer compute whole dataset matrix multiplication that were needed when sampling the mean (`Emu`) and re-updating the residuals (`epsilon`) after a dataset full pass. Therefore, the mean is no longer sampled and the residuals are updated only during a full pass. This decreases the runtimes of `NumPyBayes_v3.py` and `TensorBayes_v3.3.py` of ~ 2s and ~ 4s, respectively, compared to the previous versions.
+Those versions no longer compute whole dataset matrix multiplication that were needed when sampling the mean (`Emu`) and re-updating the residuals (`epsilon`) after a dataset full pass. Therefore, the mean is no longer sampled and the residuals are updated only during a full pass. This decreases the runtimes of `NumPyBayes_v3.py` and `TensorBayes_v3.3.py` by ~ 2s and ~ 4s, respectively, compared to the previous versions.
   
 #### About `TensorBayes_v4.1.py`:    
 
