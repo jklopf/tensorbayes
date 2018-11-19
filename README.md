@@ -11,9 +11,12 @@ Jonathan Klopfenstein
 
 #### About `TensorBayes_v4.py`:    
 This version is able to compute normally and retrieve the parameters as `NumpyBayes_v3.py` does,
-and implements the TensorFlow dataset API.
+and implements the TensorFlow dataset API. Compared to the previous version (`TensorBayes_v3.3.py`), runtime has improved by 10 seconds.
 
 ### Runtimes (on MacBook Air CPU, 2.2GHz i7):
+
+Conditions: Number of samples N = 5000, number of covariates M = 10, number of Gibbs sampling iterations = 5000.
+
 - `NumpyBayes_v2.py`: ~ 10s
 - `NumpyBayes_v3.py`: ~ 8s
 - `TensorBayes_v3.3.py`: ~ 60s
