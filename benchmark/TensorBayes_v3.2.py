@@ -7,7 +7,7 @@ tfd = tfp.distributions
 
 '''
 This version is able to retrieve the simulated parameters and
-store the history of the sampling, as NumPyBayes_v2.py does. 
+store the history of the sampling, as NumpyBayes_v2.py does. 
 
 The next version will implement the tensorflow dataset API instead of
 placeholders to feed data, and will be called:
@@ -21,9 +21,9 @@ start_time = time.clock()
 tf.reset_default_graph()
 
 # Reproducibility
-# Seed setting for reproducible research.
+# Seed setting for reproducable research.
 # 
-# Set NumPy seed
+# Set numpy seed
 np.random.seed(1234)
 
 # Set graph-level seed
@@ -259,7 +259,7 @@ with tf.Session() as sess:
     for i in range(num_iter): # TODO: replace with tf.while ?
         if(i%500 == 0): print(".",end='', flush=True)
         
-        #sess.run(emu_up)
+        sess.run(emu_up)
         #sess.run(ny_reset)
         index = np.random.permutation(M)
 
@@ -269,7 +269,7 @@ with tf.Session() as sess:
             sess.run(up_grp, feed_dict=feed)
         sess.run(nz_up)
         sess.run(ew_up)
-        #sess.run(eps_up)
+        sess.run(eps_up)
         sess.run(s2b_up)
         sess.run(s2e_up)
 
