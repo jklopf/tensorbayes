@@ -7,35 +7,22 @@ Created on Tue Oct 16 14:22:40 2018
 """
 
 import numpy as np
-#from scipy.stats import invgamma
-from sklearn import preprocessing
 from tqdm import tqdm
+from timeit import timeit
 
 
 
 # Reproducibility
-#np.random.seed(123)
+np.random.seed(1234)
 
-###############################################################################
-
-# Distribution functions
-
-# =============================================================================
-# def rinvchisq(df, scale):
-#     a = df * 0.5
-#     b = df * scale * 0.5
-#     return invgamma.rvs(a, scale=b)
-# =============================================================================
-   
-#def rinvchisq(df, scale):
-#    return 1.0 / np.random.gamma(df/2.0, df * scale / 2.0)
-
+# Sampling functions
 def rinvchisq(df, scale):
-    sample = (df * scale)/np.random.chisquare(df)
+    sample = (df * scale)/(np.random.chisquare(df) + 1e-8)
     return sample
 
-# rnorm is defined using the variance (i.e sigma^2)
+
 def rnorm(mean, var):
+    # rnorm is defined using the variance (i.e sigma^2)
     sd = np.sqrt(var)
     return np.random.normal(mean, sd)
 
@@ -89,7 +76,7 @@ def build_toy_dataset(N, M, var_g):
     
     beta_true = np.random.normal(0, sigma_b , M)
     x = sigma_b * np.random.randn(N, M)
-    x=preprocessing.scale(x)
+    #x=preprocessing.scale(x)
     y = np.dot(x, beta_true) + np.random.normal(0, sigma_e, N)
     return x, y, beta_true
 
@@ -108,23 +95,7 @@ def gibb():
 
     x, y, beta_true = build_toy_dataset(N,M,var_g)
 
-
-
-    #x = preprocessing.scale(x)
-
-    #y = preprocessing.scale(y)
-    #x= preprocessing.scale(x)
-    #y=preprocessing.scale(y)
-    # beta_true = np.linspace(-4.,10.,10)
-
-    #beta_true = np.ones(M) * 0.25
-    #x = np.random.randn(N,M)
-    #y = np.matmul(x, beta_true) +  (np.random.randn(N) * 0.375)
-
-    ###############################################################################
-
     # Parameters setup
-
     Emu = np.zeros(1)
     vEmu = np.ones(N)
     Ebeta = np.zeros(M)
@@ -136,19 +107,10 @@ def gibb():
     sigma2_b = rbeta(1,1)
 
     v0E, v0B = 0.001,0.001
-    #v0E, v0B = 4,4
     s0B = sigma2_b / 2
     s0E = sigma2_e / 2
-    #s0B=0.01
-    #s0E=0.01
-    #s0B, s0E = 0.001, 0.001
-    ###############################################################################
 
     # Precomputations
-
-    sm = np.zeros(M)
-    for i in range(M):
-        sm[i] = squared_norm(x[:,i])
 
     ###############################################################################
 
@@ -161,20 +123,19 @@ def gibb():
     sigma_e_log = []
     sigma_b_log = []
     beta_log = []
+    ny_log = []
 
+    print('\n', 'Begin Gibbs sampling', '\n')
     for i in tqdm(range(num_iter)):
         
-        #Emu = sample_mu(N, sigma2_e, y, x, Ebeta)
         index = np.random.permutation(M)
         
         for marker in index:
-            #print(marker, end=" ", flush=True)
             epsilon = epsilon + x[:,marker] * Ebeta[marker]
-            Cj = sm[marker] + sigma2_e/sigma2_b
+            Cj = squared_norm(x[:,marker]) + sigma2_e/sigma2_b
             rj = np.dot(x[:,marker], epsilon)
             ratio = np.sqrt((sigma2_b * Cj)/sigma2_e)*np.exp(-(np.square(rj)/(2*Cj*sigma2_e)))
             pij = Ew/(Ew + ratio*(1-Ew))
-            # print('pij: ', pij)
             ny[marker] = rbernouilli(pij)
             if (ny[marker] == 0):
                 
@@ -188,9 +149,8 @@ def gibb():
         
         
         NZ = np.sum(ny)
+        ny_log.append(ny)
         Ew = sample_w(M, NZ)
-        # print("Ew: ", Ew)
-        #epsilon = y - np.matmul(x,Ebeta) - vEmu*Emu
         sigma2_b = sample_sigma2_b(Ebeta, NZ, v0B, s0B)
         sigma_b_log.append(sigma2_b)
         sigma2_e = sample_sigma2_e(N, epsilon, v0E, s0E)
@@ -198,20 +158,30 @@ def gibb():
                 
         if(i > 2000):
             beta_log.append(Ebeta.reshape(M))
-
-    print("mean Ebeta" +  "\t" + "     ", '   ny' + '\t'+ ' beta_true')
+    print('\n','Results:')
+    print(
+        "mean Ebeta",
+        'posterior inclusion probability',
+        ' beta_true',
+        sep='\t' + '\t')
     for i in range(M):
-        print(np.round(np.mean(beta_log, axis = 0).reshape(M,1)[i],5), "\t"  + "", ny[i], "\t", beta_true[i])
+        print(
+            np.round(np.mean(beta_log, axis = 0).reshape(M,1)[i],5),
+            np.mean(ny_log, axis = 0).reshape(M,1)[i],
+            beta_true[i],
+            sep='\t' + '\t')
 
     print(" ")
-    print("mean sigma2_e:" + str(np.mean(sigma_e_log[2500:5000])))
-    print("mean sigma2_b:" + str(np.mean(sigma_b_log[2500:5000])))
+    print("mean sigma2_e:", np.round(np.mean(sigma_e_log[2500:5000]), 5))
+    print("mean sigma2_b:", np.round(np.mean(sigma_b_log[2500:5000]), 5))
 
     
 
 gibb()
-            
-    
+n_time = 1
+cpu_time = np.round(timeit('gibb()', number=n_time, setup='from __main__ import gibb'), 4)
+print('Mean runtime (s): {}'.format(cpu_time/(n_time + 1)))
+
 
 # # Print results
         
