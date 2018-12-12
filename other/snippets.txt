@@ -7,3 +7,32 @@ while True:
             
 
 
+
+## How to check memory usage
+import psutil
+mem = psutil.Process().memory_info()
+rss = mem.rss / (1024**2)
+vms = mem.vms / (1024**2)
+print('\nrss memory: ', rss)
+print('\nvms memory: ', rss)
+
+
+# connect to dbc serv
+ssh jklopfen@dbc-serv02.vital-it.ch
+cd /scratch/local/yearly/jklopfen
+
+# launch a Process (or three)
+nohup python3 d1_NumPyBayes_v3.py > d1_np_log.txt & nohup python3 d2_NumPyBayes_v3.py > d2_np_log.txt & nohup python3 d3_NumPyBayes_v3.py > d3_np_log.txt &
+
+# activate virtual env
+source jk-py3-env/bin/activate
+
+which python3
+/scratch/local/yearly/jklopfen/jk-py3-env/bin/python3
+
+resulting hashbang
+#!/scratch/local/yearly/jklopfen/jk-py3-env/bin python3
+# -*- coding: utf-8 -*-
+
+nohup python3 d1_cpu_TensorBayes_v4.2.py > d1_cpu_tb_log.txt &
+

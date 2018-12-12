@@ -8,6 +8,7 @@ Created on Tue Oct 16 14:22:40 2018
 
 import numpy as np
 from tqdm import tqdm
+import psutil
 
 # Reproducibility
 np.random.seed(1234)
@@ -157,7 +158,11 @@ for i in range(M):
 print("mean sigma2_e:" + str(np.mean(sigma_e_log[2500:5000])))
 print("mean sigma2_b:" + str(np.mean(sigma_b_log[2500:5000])))
 
-
+mem = psutil.Process().memory_info()
+rss = mem.rss / (1024**2)
+vms = mem.vms / (1024**2)
+print('\nrss memory: ', rss)
+print('\nvms memory: ', rss)
 
 
 

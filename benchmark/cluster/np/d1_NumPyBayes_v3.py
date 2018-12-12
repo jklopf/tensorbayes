@@ -7,9 +7,8 @@ Created on Tue Oct 16 14:22:40 2018
 """
 
 import numpy as np
-from tqdm import tqdm
-from timeit import timeit
-
+from timeit import repeat
+import psutil
 
 
 # Reproducibility
@@ -81,23 +80,34 @@ def build_toy_dataset(N, M, var_g):
     return x, y, beta_true
 
 # Parameters of simulated data
-    
 
+# var(b) = var(g) / M
+# var(e) = 1 - var(g)
+# var(y) = var(g) + var(e) 
+
+N = 500     # Number of individuals
+M = 100     # Number of covariates
+var_g = 0.7   # Genetic variance
+
+
+# Benchmark parameters and logs
+n_time = 20
+oa_mean_s2b = []
+oa_mean_s2e = []
+oa_cor = []
+oa_pip = []
+oa_time = []
 
 def gibb():
-    N = 5000
-    M = 10
-    var_g=0.7
+    global oa_mean_s2b
+    global oa_mean_s2e
+    global oa_cor
+    global N, M
 
-    # var(b) = var(g) / M
-    # var(e) = 1 - var(g)
-    # var(y) = var(g) + var(e)
-
+    # Simulated data
     x, y, beta_true = build_toy_dataset(N,M,var_g)
 
     # Parameters setup
-    Emu = np.zeros(1)
-    vEmu = np.ones(N)
     Ebeta = np.zeros(M)
     ny = np.zeros(M)
     Ew = np.zeros(1)
@@ -105,28 +115,18 @@ def gibb():
     NZ = np.zeros(1)
     sigma2_e = squared_norm(y) / (N*0.5)
     sigma2_b = rbeta(1,1)
-
     v0E, v0B = 0.001,0.001
     s0B = sigma2_b / 2
     s0E = sigma2_e / 2
 
-    # Precomputations
-
-    ###############################################################################
-
-
-    # Gibbs sampling iterations
-
-
+    # Gibbs sampling iterations and sampling logs
     num_iter = 5000
-
     sigma_e_log = []
     sigma_b_log = []
     beta_log = []
     ny_log = []
 
-    print('\n', 'Begin Gibbs sampling', '\n')
-    for i in tqdm(range(num_iter)):
+    for i in range(num_iter):
         
         index = np.random.permutation(M)
         
@@ -149,50 +149,57 @@ def gibb():
         
         
         NZ = np.sum(ny)
-        ny_log.append(ny)
         Ew = sample_w(M, NZ)
         sigma2_b = sample_sigma2_b(Ebeta, NZ, v0B, s0B)
-        sigma_b_log.append(sigma2_b)
         sigma2_e = sample_sigma2_e(N, epsilon, v0E, s0E)
-        sigma_e_log.append(sigma2_e)
-                
-        if(i > 2000):
+
+        # Store sampling logs      
+        if(i >= 2000):
+            sigma_e_log.append(sigma2_e)
+            sigma_b_log.append(sigma2_b)
+            ny_log.append(ny)
             beta_log.append(Ebeta.reshape(M))
-    print('\n','Results:')
-    print(
-        "mean Ebeta",
-        'posterior inclusion probability',
-        ' beta_true',
-        sep='\t' + '\t')
-    for i in range(M):
-        print(
-            np.round(np.mean(beta_log, axis = 0).reshape(M,1)[i],5),
-            np.mean(ny_log, axis = 0).reshape(M,1)[i],
-            beta_true[i],
-            sep='\t' + '\t')
-
-    print(" ")
-    print("mean sigma2_e:", np.round(np.mean(sigma_e_log[2500:5000]), 5))
-    print("mean sigma2_b:", np.round(np.mean(sigma_b_log[2500:5000]), 5))
-
-    
-
-gibb()
-n_time = 1
-cpu_time = np.round(timeit('gibb()', number=n_time, setup='from __main__ import gibb'), 4)
-print('Mean runtime (s): {}'.format(cpu_time/(n_time + 1)))
-
-
-# # Print results
         
-# print("mean Ebeta" +  "\t" + "     ", '   ny' + '\t'+ ' beta_true')
-# for i in range(M):
-#     print(np.round(np.mean(beta_log, axis = 0).reshape(M,1)[i],5), "\t"  + "", ny[i], "\t", beta_true[i])
+    
+    # Store local results
+    mean_ebeta = np.mean(beta_log, axis = 0)
+    pip = np.mean(ny_log, axis = 0)
+    mean_s2e = np.mean(sigma_e_log)
+    mean_s2b = np.mean(sigma_b_log)
+    corr_ebeta_betatrue = np.corrcoef(mean_ebeta, beta_true)[0][1]
 
-# print(" ")
-# print("mean sigma2_e:" + str(np.mean(sigma_e_log[2500:5000])))
-# print("mean sigma2_b:" + str(np.mean(sigma_b_log[2500:5000])))
+    # Store overall results
+    oa_mean_s2e.append(mean_s2e)
+    oa_mean_s2b.append(mean_s2b)
+    oa_pip.append(len([num for num in pip if num >= 0.95]))
+    oa_cor.append(corr_ebeta_betatrue)
 
+# Measure running times and execute the code n_time
+oa_time = np.round(repeat('gibb()',repeat=n_time, number=1, setup='from __main__ import gibb'), 4)
+
+# Measure memory usage
+mem = psutil.Process().memory_info()
+rss = mem.rss / (1024**2)
+vms = mem.vms / (1024**2)
+
+# Output benchmark logs
+print('D1 Logs')
+print('N = {}, M = {}, var(g) = {}'.format(N,M,var_g))
+print('\nrss memory (physical): {} MiB'.format(rss))
+print('vms memory (virtual): {} MiB'.format(vms))
+print('\nMin time of execution: ', oa_time.min())
+print('Mean time of execution memory: ', np.mean(oa_time))
+
+# Write results to a .csv
+# Order: s2e | s2b | cor | pip | time
+results = np.stack((
+    oa_mean_s2e,
+    oa_mean_s2b,
+    oa_cor,
+    oa_pip,
+    oa_time), axis=-1)
+
+np.savetxt('d1_np_results.csv', results, delimiter=',')
 
 
 
