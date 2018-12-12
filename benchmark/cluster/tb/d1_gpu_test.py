@@ -224,17 +224,17 @@ def gibb():
 
     beta_item_assign_op = Ebeta[ind,0].assign(ta_beta) 		# when doing item assignment, read_value becomes an unexpected parameter, 
     ny_item_assign_op = Ny[ind].assign(ta_ny)               # as tensorflow doesn't know what to return the single item or the whole variable
-    eps_up_fl = epsilon.assign(ta_eps, read_value=False)
+    eps_up_fl = epsilon.assign(ta_eps)
     fullpass = tf.group(beta_item_assign_op, ny_item_assign_op, eps_up_fl)
 
-    s2e_up = Sigma2_e.assign(sample_sigma2_e(N,epsilon,v0E,s0E), read_value=False)
-    nz_up = NZ.assign(tf.reduce_sum(Ny), read_value=False)
+    s2e_up = Sigma2_e.assign(sample_sigma2_e(N,epsilon,v0E,s0E))
+    nz_up = NZ.assign(tf.reduce_sum(Ny))
     first_round = tf.group(nz_up,s2e_up)
 
     # Control dependencies:
     with tf.control_dependencies([first_round]):
-        ew_up = Ew.assign(sample_w(M,NZ), read_value=False)
-        s2b_up = Sigma2_b.assign(sample_sigma2_b(Ebeta,NZ,v0B,s0B), read_value=False)
+        ew_up = Ew.assign(sample_w(M,NZ))
+        s2b_up = Sigma2_b.assign(sample_sigma2_b(Ebeta,NZ,v0B,s0B))
     param_up = tf.group(ew_up, s2b_up)
 
     # Logs definition:
