@@ -136,12 +136,12 @@ Var(e) = 1 - Var(g)
 '''
 
 N = 5000       # number of data points
-M = 10        # number of features
+M = 1000        # number of features
 var_g = 0.7   # genetic variance parameter
 
 # Benchmark parameters and logs
 # oa: overall
-n_time = 3
+n_time = 1
 oa_mean_s2b = []
 oa_mean_s2e = []
 oa_cor = []
@@ -321,9 +321,14 @@ results = np.stack((
     oa_pip,
     oa_time), axis=-1)
 
-np.savetxt(
-    'd1_tb_cpu_results.csv',
-    results,
-    delimiter=',',
-    header='sigma2_e, sigma2_b, cor(eb,bt), PiP, time',
-    fmt='%.8f')
+np.set_printoptions(
+   formatter={'float_kind':'{:0.5f}'.format})
+print('s2e | s2b | cor | pip | time')
+print(results)
+
+#np.savetxt(
+#    'dev.csv',
+#    results,
+#    delimiter=',',
+#    header='sigma2_e, sigma2_b, cor(eb,bt), PiP, time',
+#    fmt='%.8f')
