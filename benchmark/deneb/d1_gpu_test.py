@@ -135,13 +135,13 @@ Var(b) = Var(g) / M
 Var(e) = 1 - Var(g)
 '''
 
-N = 500       # number of data points
+N = 500      # number of data points
 M = 100        # number of features
 var_g = 0.7   # genetic variance parameter
 
 # Benchmark parameters and logs
 # oa: overall
-n_time = 1
+n_time = 5
 oa_mean_s2b = []
 oa_mean_s2e = []
 oa_cor = []
@@ -196,8 +196,8 @@ def gibb():
 
     # Constants:
 
-    v0E = tf.constant(4.0, dtype=tf.float32)
-    v0B = tf.constant(4.0, dtype=tf.float32)
+    v0E = tf.constant(0.001, dtype=tf.float32)
+    v0B = tf.constant(0.001, dtype=tf.float32)
     s0B = Sigma2_b.initialized_value() / 2
     s0E = Sigma2_e.initialized_value() / 2
 
@@ -224,17 +224,17 @@ def gibb():
 
     beta_item_assign_op = Ebeta[ind,0].assign(ta_beta) 		# when doing item assignment, read_value becomes an unexpected parameter, 
     ny_item_assign_op = Ny[ind].assign(ta_ny)               # as tensorflow doesn't know what to return the single item or the whole variable
-    eps_up_fl = epsilon.assign(ta_eps, read_value=False)
+    eps_up_fl = epsilon.assign(ta_eps)
     fullpass = tf.group(beta_item_assign_op, ny_item_assign_op, eps_up_fl)
 
-    s2e_up = Sigma2_e.assign(sample_sigma2_e(N,epsilon,v0E,s0E), read_value=False)
-    nz_up = NZ.assign(tf.reduce_sum(Ny), read_value=False)
+    s2e_up = Sigma2_e.assign(sample_sigma2_e(N,epsilon,v0E,s0E))
+    nz_up = NZ.assign(tf.reduce_sum(Ny))
     first_round = tf.group(nz_up,s2e_up)
 
     # Control dependencies:
     with tf.control_dependencies([first_round]):
-        ew_up = Ew.assign(sample_w(M,NZ), read_value=False)
-        s2b_up = Sigma2_b.assign(sample_sigma2_b(Ebeta,NZ,v0B,s0B), read_value=False)
+        ew_up = Ew.assign(sample_w(M,NZ))
+        s2b_up = Sigma2_b.assign(sample_sigma2_b(Ebeta,NZ,v0B,s0B))
     param_up = tf.group(ew_up, s2b_up)
 
     # Logs definition:
@@ -296,7 +296,7 @@ def gibb():
 
 
 # Measure running times and execute the code n_time
-oa_time = repeat('gibb()',repeat=n_time, number=1, setup='from __main__ import gibb')
+oa_time = repeat('gibb()',repeat=2, number=1, setup='from __main__ import gibb')
 
 
 # Measure memory usage
@@ -309,7 +309,7 @@ print('\nD1 Logs: TensorBayes v4.2 on CPU')
 print('N = {}, M = {}, var(g) = {}'.format(N,M,var_g))
 print('\nrss memory (physical): {} MiB'.format(rss))
 print('vms memory (virtual): {} MiB'.format(vms))
-print('\nMin time of execution: ', np.round(np.min(oa_time), 4))
+print('\nMin time of execution: ', np.round(np.min(oa_time)),4)
 print('Mean time of execution memory: ', np.round(np.mean(oa_time),4))
 
 # Write results to a .csv
@@ -321,14 +321,9 @@ results = np.stack((
     oa_pip,
     oa_time), axis=-1)
 
-np.set_printoptions(
-   formatter={'float_kind':'{:0.5f}'.format})
-print('s2e | s2b | cor | pip | time')
-print(results)
-
-#np.savetxt(
-#    'dev.csv',
-#    results,
-#    delimiter=',',
-#    header='sigma2_e, sigma2_b, cor(eb,bt), PiP, time',
-#    fmt='%.8f')
+np.savetxt(
+    'd1_tb_cpu_results.csv',
+    results,
+    delimiter=',',
+    header='sigma2_e, sigma2_b, cor(eb,bt), PiP, time',
+    fmt='%.8f')
