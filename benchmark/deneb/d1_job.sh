@@ -10,4 +10,4 @@
 slmodules -s x86_E5v2_Mellanox_GPU
 module load gcc cuda cudnn mvapich2 openblas
 source ~/tensorflow-1.9/bin/activate
-srun python d1_gpu_test.py
+srun python d1_gpu_test.py > d1.log
