@@ -50,11 +50,11 @@ oa_mean_s2e = []
 oa_cor = []
 oa_pip = []
 
-
-def gibb():
+# Gibbs sampler function
+def gibbs():
     global oa_mean_s2b
     global oa_mean_s2e
-    global oa_cor
+    global oa_cor, oa_pip
     global N, M
 
     ###############################################################################
@@ -84,11 +84,6 @@ def gibb():
     ###############################################################################
 
     # Sampling functions
-    def sample_mu(N, sigma2_e, Y, X, beta):
-        mean = np.sum(Y - np.matmul(X,beta))/N
-        var = sigma2_e/N
-        return rnorm(mean, var)
-
     def sample_sigma2_e(N, epsilon, v0E, s0E):
         df = v0E + N
         scale = (squared_norm(epsilon) + v0E*s0E)/df
@@ -130,16 +125,17 @@ def gibb():
     NZ = np.zeros(1)
     sigma2_e = squared_norm(y) / (N*0.5)
     sigma2_b = rbeta(1,1)
-    v0E = 0.01
-    v0B = 0.01
+    v0E = 0.001
+    v0B = 0.001
     s0B = sigma2_b / 2
     s0E = sigma2_e / 2
 
     # Dev
     #print('v0E, v0B = {}'.format(v0B))
 
-    # Gibbs sampling iterations parameter and sampling logs
+    # Gibbs sampling iterations parameters and sampling logs
     num_iter = 5000
+    burned_samples_threshold = 2000
     sigma_e_log = []
     sigma_b_log = []
     beta_log = []
@@ -178,7 +174,7 @@ def gibb():
         sigma2_e = sample_sigma2_e(N, epsilon, v0E, s0E)
 
         # Store sampling logs      
-        if(i >= 2000):
+        if(i >= burned_samples_threshold):
             sigma_e_log.append(sigma2_e)
             sigma_b_log.append(sigma2_b)
             ny_log.append(ny)
@@ -200,7 +196,7 @@ def gibb():
             print('{:<10s}{:>4s}{:>12s}'.format('Computed betas','PiP','True betas'))
             print(dash)
         else:
-            print('{:<12.5f}{:>6.1f}{:>12.5f}'.format(mean_ebeta[i], pip[i], beta_true[i]))
+            print('{:<12.5f}{:>6.3f}{:>12.5f}'.format(mean_ebeta[i], pip[i], beta_true[i]))
     
     # Store overall results
     oa_mean_s2e.append(mean_s2e)
@@ -210,7 +206,7 @@ def gibb():
 
 # Measure running times and execute the code n_time
 n_time = 1
-oa_time = np.round(repeat('gibb()',repeat=n_time, number=1, setup='from __main__ import gibb'), 4)
+oa_time = np.round(repeat('gibbs()',repeat=n_time, number=1, setup='from __main__ import gibbs'), 4)
 
 # Measure memory usage
 mem = psutil.Process().memory_info()
@@ -245,7 +241,10 @@ results = np.stack((
 
 
 print('\nResults:')
-print('    s2e  |  s2b  |  cor  |   pip  |  time')
+dash = '-' * 40
+print(dash)
+print('{:<10s}{:>7s}{:>9s}{:>4s}{:>6s}'.format('s2e', 's2b     ','corr(eb,bt)', 'PiP','time'))
+print(dash)
 print(results)
 
 

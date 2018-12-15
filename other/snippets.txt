@@ -41,3 +41,7 @@ nohup python3 d1_cpu_TensorBayes_v4.2.py > d1_cpu_tb_log.txt &
 np.set_printoptions(
    formatter={'float_kind':'{:0.5f}'.format})
 
+# connect to deneb2
+ssh -L 2222:deneb2.epfl.ch:22 tremplin.epfl.ch -l 228327
+*open other terminal*
+ssh -p 2222 localhost -l klopfens

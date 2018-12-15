@@ -13,74 +13,12 @@ import numpy as np
 import argparse
 from timeit import repeat
 import psutil
-import argparse
+
 
 # Reproducibility
 np.random.seed(1234)
 
-# Sampling functions
-def rinvchisq(df, scale):
-    sample = (df * scale)/(np.random.chisquare(df) + 1e-8)
-    return sample
 
-
-def rnorm(mean, var):
-    # rnorm is defined using the variance (i.e sigma^2)
-    sd = np.sqrt(var)
-    return np.random.normal(mean, sd)
-
-def rbeta(a,b):
-    return np.random.beta(a,b)
-
-def rbernouilli(p):
-    return np.random.binomial(1, p)
-
-###############################################################################
-
-# Util functions
-    
-def squared_norm(vector):
-    return np.sum(np.square(vector))
-
-###############################################################################
-
-
-# Sampling functions
-    
-def sample_mu(N, sigma2_e, Y, X, beta):
-    mean = np.sum(Y - np.matmul(X,beta))/N
-    var = sigma2_e/N
-    return rnorm(mean, var)
-
-def sample_sigma2_e(N, epsilon, v0E, s0E):
-    df = v0E + N
-    scale = (squared_norm(epsilon) + v0E*s0E)/df
-    sample = rinvchisq(df, scale)
-    return sample
-
-def sample_sigma2_b(beta, NZ, v0B, s0B):
-    df = v0B + NZ
-    scale = (squared_norm(beta) + v0B*s0B)/df # * NZ or not ????
-    sample = rinvchisq(df, scale)
-    return sample
-
-def sample_w(M, NZ):
-    sample = rbeta(1 + NZ, 1 + M - NZ) 
-    return sample
-
-###############################################################################
-
-# Data simulation
-    
-def build_toy_dataset(N, M, var_g):
-    
-    sigma_b = np.sqrt(var_g/M)
-    sigma_e = np.sqrt((1 - var_g))
-    beta_true = np.random.normal(0, sigma_b , M)
-    x = sigma_b * np.random.randn(N, M)
-    #x=preprocessing.scale(x)
-    y = np.dot(x, beta_true) + np.random.normal(0, sigma_e, N)
-    return x, y, beta_true
 
 # Parameters of simulated data
 
@@ -98,7 +36,7 @@ parser.add_argument('n', metavar='N', type=int,
 parser.add_argument('m', metavar='M', type=int,
                     help='number of covariates')
 parser.add_argument('n_time', metavar='n_time', type=int,
-                    help='number of script iteration')
+                    help='number of different datasets')
 args = parser.parse_args()
 
 N = args.n     # Number of individuals
@@ -112,11 +50,71 @@ oa_mean_s2e = []
 oa_cor = []
 oa_pip = []
 
-def gibb():
+# Gibbs sampler function
+def gibbs():
     global oa_mean_s2b
     global oa_mean_s2e
     global oa_cor
     global N, M
+
+    ###############################################################################
+
+    # Distribution functions
+    def rinvchisq(df, scale):
+        sample = (df * scale)/(np.random.chisquare(df) + 1e-8)
+        return sample
+
+    def rnorm(mean, var):
+        # rnorm is defined using the variance (i.e sigma^2)
+        sd = np.sqrt(var)
+        return np.random.normal(mean, sd)
+
+    def rbeta(a,b):
+        return np.random.beta(a,b)
+
+    def rbernouilli(p):
+        return np.random.binomial(1, p)
+
+    ###############################################################################
+
+    # Util functions
+        
+    def squared_norm(vector):
+        return np.sum(np.square(vector))
+
+    ###############################################################################
+
+    # Sampling functions
+    def sample_sigma2_e(N, epsilon, v0E, s0E):
+        df = v0E + N
+        scale = (squared_norm(epsilon) + v0E*s0E)/df
+        sample = rinvchisq(df, scale)
+        return sample
+
+    def sample_sigma2_b(beta, NZ, v0B, s0B):
+        df = v0B + NZ
+        scale = (squared_norm(beta) + v0B*s0B)/df # * NZ or not ????
+        sample = rinvchisq(df, scale)
+        return sample
+
+    def sample_w(M, NZ):
+        sample = rbeta(1 + NZ, 1 + M - NZ) 
+        return sample
+
+    ###############################################################################
+
+    # Data simulation function
+    def build_toy_dataset(N, M, var_g):
+        
+        sigma_b = np.sqrt(var_g/M)
+        sigma_e = np.sqrt((1 - var_g))
+        beta_true = np.random.normal(0, sigma_b , M)
+        x = sigma_b * np.random.randn(N, M)
+        #x=preprocessing.scale(x)
+        y = np.dot(x, beta_true) + np.random.normal(0, sigma_e, N)
+        return x, y, beta_true
+
+    ###############################################################################
 
     # Simulated data
     x, y, beta_true = build_toy_dataset(N,M,var_g)
@@ -133,17 +131,21 @@ def gibb():
     s0B = sigma2_b / 2
     s0E = sigma2_e / 2
 
-    # Gibbs sampling iterations and sampling logs
+    # Gibbs sampling iterations parameters and sampling logs
     num_iter = 5000
+    burned_samples_threshold = 2000
     sigma_e_log = []
     sigma_b_log = []
     beta_log = []
     ny_log = []
 
+    # Gibbs sampler
     for i in range(num_iter):
-        
+
+        # Random order of column        
         index = np.random.permutation(M)
-        
+
+        # Loop through the column to sample the regression coefficient (betas)
         for marker in index:
             epsilon = epsilon + x[:,marker] * Ebeta[marker]
             Cj = squared_norm(x[:,marker]) + sigma2_e/sigma2_b
@@ -161,19 +163,18 @@ def gibb():
             
             epsilon = epsilon - x[:,marker] * Ebeta[marker]
         
-        
+        # Update the rest of the variables
         NZ = np.sum(ny)
         Ew = sample_w(M, NZ)
         sigma2_b = sample_sigma2_b(Ebeta, NZ, v0B, s0B)
         sigma2_e = sample_sigma2_e(N, epsilon, v0E, s0E)
 
         # Store sampling logs      
-        if(i >= 2000):
+        if(i >= burned_samples_threshold):
             sigma_e_log.append(sigma2_e)
             sigma_b_log.append(sigma2_b)
             ny_log.append(ny)
             beta_log.append(Ebeta.reshape(M))
-        
     
     # Store local results
     mean_ebeta = np.mean(beta_log, axis = 0)
@@ -189,7 +190,7 @@ def gibb():
     oa_cor.append(corr_ebeta_betatrue)
 
 # Measure running times and execute the code n_time
-oa_time = np.round(repeat('gibb()',repeat=args.n_time, number=1, setup='from __main__ import gibb'), 4)
+oa_time = np.round(repeat('gibbs()',repeat=args.n_time, number=1, setup='from __main__ import gibbs'), 4)
 
 # Measure memory usage
 mem = psutil.Process().memory_info()
@@ -197,14 +198,14 @@ rss = mem.rss / (1024**2)
 vms = mem.vms / (1024**2)
 
 # Output benchmark logs
-print('\nBenchmarking results: NumPyBayes v3')
+print('\nBenchmarking results: NumPyBayes v3 on dbc-serv02')
 print('N = {}, M = {}, var(g) = {}'.format(N,M,var_g))
 print('\nMemory usage')
 print('rss memory (physical): {} MiB'.format(rss))
 print('vms memory (virtual): {} MiB'.format(vms))
 print('\nTiming results')
-print('Minimal time of execution: ', oa_time.min())
-print('Mean time of execution memory: ', np.mean(oa_time))
+print('Minimal time of execution: {}s'.format(oa_time.min()))
+print('Mean time of execution memory: {}s'.format(np.mean(oa_time)))
 
 # Write results to a .csv
 # Order: s2e | s2b | cor | pip | time
