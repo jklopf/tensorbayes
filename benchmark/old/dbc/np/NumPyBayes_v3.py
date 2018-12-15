@@ -7,10 +7,10 @@ Created on Tue Oct 16 14:22:40 2018
 """
 
 import numpy as np
+import argparse
 from timeit import repeat
-from tqdm import tqdm
 import psutil
-
+import argparse
 
 # Reproducibility
 np.random.seed(1234)
@@ -73,7 +73,6 @@ def build_toy_dataset(N, M, var_g):
     
     sigma_b = np.sqrt(var_g/M)
     sigma_e = np.sqrt((1 - var_g))
-    
     beta_true = np.random.normal(0, sigma_b , M)
     x = sigma_b * np.random.randn(N, M)
     #x=preprocessing.scale(x)
@@ -84,20 +83,29 @@ def build_toy_dataset(N, M, var_g):
 
 # var(b) = var(g) / M
 # var(e) = 1 - var(g)
-# var(y) = var(g) + var(e) 
+# var(y) = var(g) + var(e)
 
-N = 500     # Number of individuals
-M = 100     # Number of covariates
-var_g = 0.7   # Genetic variance
+# Set N, M to be pass as arguments when running the script
+
+parser = argparse.ArgumentParser(
+    description='Run a simulation study of penalized regression. \
+    Please provide the number of individuals and number of covariates.')
+parser.add_argument('n', metavar='N', type=int,
+                    help='number of individuals')
+parser.add_argument('m', metavar='M', type=int,
+                    help='number of covariates')
+args = parser.parse_args()
+
+N = args.n     # Number of individuals
+M = args.m     # Number of covariates
+var_g = 0.7    # Genetic variance
 
 
 # Benchmark parameters and logs
-n_time = 10
 oa_mean_s2b = []
 oa_mean_s2e = []
 oa_cor = []
 oa_pip = []
-oa_time = []
 
 def gibb():
     global oa_mean_s2b
@@ -116,7 +124,7 @@ def gibb():
     NZ = np.zeros(1)
     sigma2_e = squared_norm(y) / (N*0.5)
     sigma2_b = rbeta(1,1)
-    v0E, v0B = 1e-9,1e-9
+    v0E, v0B = 0.001,0.001
     s0B = sigma2_b / 2
     s0E = sigma2_e / 2
 
@@ -127,7 +135,7 @@ def gibb():
     beta_log = []
     ny_log = []
 
-    for i in tqdm(range(num_iter)):
+    for i in range(num_iter):
         
         index = np.random.permutation(M)
         
@@ -184,11 +192,13 @@ rss = mem.rss / (1024**2)
 vms = mem.vms / (1024**2)
 
 # Output benchmark logs
-print('D1 Logs')
+print('\Benchmarking results: NumPyBayes v3')
 print('N = {}, M = {}, var(g) = {}'.format(N,M,var_g))
-print('\nrss memory (physical): {} MiB'.format(rss))
+print('\nMemory usage')
+print('rss memory (physical): {} MiB'.format(rss))
 print('vms memory (virtual): {} MiB'.format(vms))
-print('\nMin time of execution: ', oa_time.min())
+print('\nTiming results')
+print('Minimal time of execution: ', oa_time.min())
 print('Mean time of execution memory: ', np.mean(oa_time))
 
 # Write results to a .csv
@@ -200,11 +210,14 @@ results = np.stack((
     oa_pip,
     oa_time), axis=-1)
 
-np.set_printoptions(
-   formatter={'float_kind':'{:0.5f}'.format})
-print('s2e | s2b | cor | pip | time')
-print(results)
-#np.savetxt('prior_test.csv', results, delimiter=',')
+filename = 'NP3_n{}_m{}_results.csv'.format(N,M)
+
+np.savetxt(
+    'dev.csv',
+    results,
+    delimiter=',',
+    header='sigma2_e, sigma2_b, cor(eb,bt), PiP, time',
+    fmt='%.8f')
 
 
 

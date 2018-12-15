@@ -28,8 +28,8 @@ tf.reset_default_graph()
 # Set numpy seed
 np.random.seed(1234)
 
-# Print options (dev)
-# np.set_printoptions(precision=5, floatmode='fixed')
+# Dev
+np.set_printoptions(formatter={'float_kind':'{:.5f}'.format})
 
 # Set graph-level seed
 tf.set_random_seed(1234)
@@ -62,8 +62,9 @@ def rbeta(a, b):
 
 def rinvchisq(df, scale):
 	# scale factor = tau^2
+    e = tf.constant(1e-8, dtype=tf.float32)
     dist = tfd.Chi2(df)
-    sample = (df * scale)/dist.sample()
+    sample = (df * scale)/ (dist.sample() + e)
     return sample
 
 def rbernoulli(p):
@@ -135,13 +136,12 @@ Var(b) = Var(g) / M
 Var(e) = 1 - Var(g)
 '''
 
-N = 500       # number of data points
+N = 5000       # number of data points
 M = 100        # number of features
 var_g = 0.7   # genetic variance parameter
 
 # Benchmark parameters and logs
 # oa: overall
-n_time = 1
 oa_mean_s2b = []
 oa_mean_s2e = []
 oa_cor = []
@@ -195,9 +195,12 @@ def gibb():
     Sigma2_b = tf.Variable(rbeta(1., 1.), dtype=tf.float32)
 
     # Constants:
+    test_val = 2.0
+    # Dev
+    print('v0E, v0B = {}'.format(test_val))
 
-    v0E = tf.constant(4.0, dtype=tf.float32)
-    v0B = tf.constant(4.0, dtype=tf.float32)
+    v0E = tf.constant(test_val, dtype=tf.float32)
+    v0B = tf.constant(test_val, dtype=tf.float32)
     s0B = Sigma2_b.initialized_value() / 2
     s0E = Sigma2_e.initialized_value() / 2
 
@@ -224,17 +227,17 @@ def gibb():
 
     beta_item_assign_op = Ebeta[ind,0].assign(ta_beta) 		# when doing item assignment, read_value becomes an unexpected parameter, 
     ny_item_assign_op = Ny[ind].assign(ta_ny)               # as tensorflow doesn't know what to return the single item or the whole variable
-    eps_up_fl = epsilon.assign(ta_eps, read_value=False)
+    eps_up_fl = epsilon.assign(ta_eps)
     fullpass = tf.group(beta_item_assign_op, ny_item_assign_op, eps_up_fl)
 
-    s2e_up = Sigma2_e.assign(sample_sigma2_e(N,epsilon,v0E,s0E), read_value=False)
-    nz_up = NZ.assign(tf.reduce_sum(Ny), read_value=False)
+    s2e_up = Sigma2_e.assign(sample_sigma2_e(N,epsilon,v0E,s0E))
+    nz_up = NZ.assign(tf.reduce_sum(Ny))
     first_round = tf.group(nz_up,s2e_up)
 
     # Control dependencies:
     with tf.control_dependencies([first_round]):
-        ew_up = Ew.assign(sample_w(M,NZ), read_value=False)
-        s2b_up = Sigma2_b.assign(sample_sigma2_b(Ebeta,NZ,v0B,s0B), read_value=False)
+        ew_up = Ew.assign(sample_w(M,NZ))
+        s2b_up = Sigma2_b.assign(sample_sigma2_b(Ebeta,NZ,v0B,s0B))
     param_up = tf.group(ew_up, s2b_up)
 
     # Logs definition:
@@ -286,6 +289,11 @@ def gibb():
     mean_ebeta = np.mean(beta_log, axis=0)
     pip = np.mean(ny_log, axis = 0)
     corr_ebeta_betatrue = np.corrcoef(mean_ebeta, beta_true)[0][1]
+    
+    # Dev
+    #print('\n Computed betas \t \t Expected betas')
+    #for i in range(M):
+    #    print(mean_ebeta[i],beta_true[i], sep='\t\t')   
 
     # Store overall results
     oa_mean_s2e.append(mean_s2e)
@@ -296,8 +304,8 @@ def gibb():
 
 
 # Measure running times and execute the code n_time
+n_time = 1
 oa_time = repeat('gibb()',repeat=n_time, number=1, setup='from __main__ import gibb')
-
 
 # Measure memory usage
 mem = psutil.Process().memory_info()
@@ -321,9 +329,9 @@ results = np.stack((
     oa_pip,
     oa_time), axis=-1)
 
-np.set_printoptions(
-   formatter={'float_kind':'{:0.5f}'.format})
-print('s2e | s2b | cor | pip | time')
+
+print('\nResults:')
+print('    s2e  |  s2b  |  cor  |   pip  |  time')
 print(results)
 
 #np.savetxt(

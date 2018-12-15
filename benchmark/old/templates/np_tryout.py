@@ -1,16 +1,12 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Tue Oct 16 14:22:40 2018
-
-@author: Jonathan Klopfenstein
-"""
 
 import numpy as np
 from timeit import repeat
 import psutil
 from tqdm import tqdm
 
+# Dev
+np.set_printoptions(formatter={'float_kind':'{:0.5f}'.format})
 
 # Reproducibility
 np.random.seed(1234)
@@ -70,15 +66,14 @@ def sample_w(M, NZ):
 # Data simulation
     
 def build_toy_dataset(N, M, var_g):
-    m = 100 # only 100 covariates have an effect
-    sigma_b = np.sqrt(var_g/m)
+    sigma_b = np.sqrt(var_g/M)
     sigma_e = np.sqrt((1 - var_g))
-    beta_true = np.append(np.random.normal(0, sigma_b , m), np.zeros(M - m))
-    np.random.shuffle(beta_true)
+    beta_true = np.random.normal(0, sigma_b , M)
     x = sigma_b * np.random.randn(N, M)
     #x=preprocessing.scale(x)
     y = np.dot(x, beta_true) + np.random.normal(0, sigma_e, N)
     return x, y, beta_true
+
 
 # Parameters of simulated data
 
@@ -87,7 +82,7 @@ def build_toy_dataset(N, M, var_g):
 # var(y) = var(g) + var(e) 
 
 N = 5000     # Number of individuals
-M = 1000     # Number of covariates
+M = 100     # Number of covariates
 var_g = 0.7   # Genetic variance
 
 
@@ -102,7 +97,9 @@ def gibb():
     global oa_mean_s2b
     global oa_mean_s2e
     global oa_cor
+    global oa_pip
     global N, M
+    global df_tryout
 
     # Simulated data
     x, y, beta_true = build_toy_dataset(N,M,var_g)
@@ -115,7 +112,7 @@ def gibb():
     NZ = np.zeros(1)
     sigma2_e = squared_norm(y) / (N*0.5)
     sigma2_b = rbeta(1,1)
-    v0E, v0B = 0.001,0.001
+    v0E, v0B = df_tryout, df_tryout
     s0B = sigma2_b / 2
     s0E = sigma2_e / 2
 
@@ -168,6 +165,11 @@ def gibb():
     mean_s2b = np.mean(sigma_b_log)
     corr_ebeta_betatrue = np.corrcoef(mean_ebeta, beta_true)[0][1]
 
+    # Dev
+    #print('\n Computed betas \t \t Expected betas')
+    #for i in range(M):
+    #    print(mean_ebeta[i],beta_true[i], sep='\t\t')
+
     # Store overall results
     oa_mean_s2e.append(mean_s2e)
     oa_mean_s2b.append(mean_s2b)
@@ -176,35 +178,51 @@ def gibb():
 
 # Measure running times and execute the code n_time
 n_time = 1
-oa_time = np.round(repeat('gibb()',repeat=n_time, number=1, setup='from __main__ import gibb'), 4)
 
-# Measure memory usage
-mem = psutil.Process().memory_info()
-rss = mem.rss / (1024**2)
-vms = mem.vms / (1024**2)
+#dev
+df_list = [0.001, 0.1, 0.7, 1.0, 2.0, 4.0]
 
-# Output benchmark logs
-print('D1 Logs')
-print('N = {}, M = {}, var(g) = {}'.format(N,M,var_g))
-print('\nrss memory (physical): {} MiB'.format(rss))
-print('vms memory (virtual): {} MiB'.format(vms))
-print('\nMin time of execution: ', oa_time.min())
-print('Mean time of execution memory: ', np.mean(oa_time))
+for df in df_list:
+    df_tryout = df
+    oa_time.append(np.round(repeat('gibb()',repeat=n_time, number=1, setup='from __main__ import gibb'), 4))
 
-# Write results to a .csv
-# Order: s2e | s2b | cor | pip | time
-results = np.stack((
-    oa_mean_s2e,
-    oa_mean_s2b,
-    oa_cor,
-    oa_pip,
-    oa_time), axis=-1)
-np.set_printoptions(formatter={'float_kind':'{:0.5f}'.format})
-print('s2e  |  s2b  |  cor  |  pip  |  time')
-print(results)
+    # Measure memory usage
+    mem = psutil.Process().memory_info()
+    rss = mem.rss / (1024**2)
+    vms = mem.vms / (1024**2)
 
-#np.savetxt('n1.csv', results, delimiter=',', header='s2e,s2b,cor,PiP,time')
+    # Output benchmark logs
+    print('D1 Logs')
+    print('N = {}, M = {}, var(g) = {}'.format(N,M,var_g))
+    print('\nrss memory (physical): {} MiB'.format(rss))
+    print('vms memory (virtual): {} MiB'.format(vms))
+    # print('\nMin time of execution: ', oa_time)
+    print('Mean time of execution memory: ', np.mean(oa_time))
 
+    # Write results to a .csv
+    # Order: s2e | s2b | cor | pip | time
+    results = np.stack((
+        oa_mean_s2e,
+        oa_mean_s2b,
+        oa_cor,
+        oa_pip,
+        oa_time), axis=-1)
+
+    #np.savetxt(
+    #    'dev.csv',
+    #    results,
+    #    delimiter=',',
+    #    header='sigma2_e, sigma2_b, cor(eb,bt), PiP, time',
+    #    fmt='%.8f')
+    print('\nv0B, v0E =', df_tryout)
+
+    print('\nResults:')
+    print('    s2e  |  s2b  |  cor  |   pip  |  time')
+    print(results)
+
+
+# '    s2e  |  s2b  |  cor  |   pip  |  time'
+#  [[0.30561 0.01144 0.34294 71.00000 54.09070]]    
 
 
 
