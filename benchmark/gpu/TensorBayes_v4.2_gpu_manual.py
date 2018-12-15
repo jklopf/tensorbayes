@@ -174,7 +174,7 @@ def gibbs():
     # Simulated data
     x, y, beta_true = build_toy_dataset(N, M, var_g)
     x = np.transpose(x)
-    with tf.device('/gpu:0')
+    with tf.device('/gpu:0'):
         X = tf.constant(x, shape=[M,N], dtype=tf.float32) # /!\ shape is now [M,N] /!\
         Y = tf.constant(y, shape=[N,1], dtype=tf.float32)
 
