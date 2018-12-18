@@ -12,8 +12,6 @@ from timeit import repeat
 import psutil
 from tqdm import tqdm
 import argparse
-from sklearn import preprocessing
-
 
 # Dev
 np.set_printoptions(formatter={'float_kind':'{:0.5f}'.format})
@@ -30,19 +28,10 @@ np.random.seed(1234)
 
 # Set N, M to be pass as arguments when running the script
 
-parser = argparse.ArgumentParser(
-    description='Run a simulation study of penalized regression. \
-    Please provide the number of individuals, number of covariates and number of script iteration.')
-parser.add_argument('n', metavar='N', type=int,
-                    help='number of individuals')
-parser.add_argument('m', metavar='M', type=int,
-                    help='number of covariates')
-#parser.add_argument('n_time', metavar='n_time', type=int,
-#                    help='number of script iteration')
-args = parser.parse_args()
 
-N = args.n     # Number of individuals
-M = args.m     # Number of covariates
+
+N = 5000     # Number of individuals
+M = 10     # Number of covariates
 var_g = 0.7   # Genetic variance
 
 
@@ -63,7 +52,7 @@ def gibbs():
 
     # Distribution functions
     def rinvchisq(df, scale):
-        sample = (df * scale)/(np.random.chisquare(df))
+        sample = (df * scale)/(np.random.chisquare(df) + 1e-8)
         return sample
 
     def rnorm(mean, var):
@@ -110,7 +99,7 @@ def gibbs():
         sigma_e = np.sqrt((1 - var_g))
         beta_true = np.random.normal(0, sigma_b , M)
         x = sigma_b * np.random.randn(N, M)
-        x = preprocessing.scale(x)
+        #x=preprocessing.scale(x)
         y = np.dot(x, beta_true) + np.random.normal(0, sigma_e, N)
         return x, y, beta_true
 
@@ -122,13 +111,13 @@ def gibbs():
     # Parameters setup
     Ebeta = np.zeros(M)
     ny = np.zeros(M)
-    Ew = 0.
+    Ew = np.zeros(1)
     epsilon = y
     NZ = np.zeros(1)
     sigma2_e = squared_norm(y) / (N*0.5)
     sigma2_b = rbeta(1,1)
-    v0E = 4.0
-    v0B = 4.0
+    v0E = 0.001
+    v0B = 0.001
     s0B = sigma2_b / 2
     s0E = sigma2_e / 2
 
@@ -179,8 +168,8 @@ def gibbs():
         if(i >= burned_samples_threshold):
             sigma_e_log.append(sigma2_e)
             sigma_b_log.append(sigma2_b)
-            ny_log.append(np.copy(ny))
-            beta_log.append(np.copy(Ebeta))
+            ny_log.append(ny)
+            beta_log.append(Ebeta.reshape(M))
         
     
     # Store local results
@@ -192,11 +181,13 @@ def gibbs():
 
     # Dev: print the estimated betas, the PiP and the true betas
     dash = '-' * 40
-    print(dash)
-    print('{:<10s}{:>4s}{:>12s}'.format('Computed betas','PiP','True betas'))
-    print(dash)
     for i in range(M):
-        print('{:<12.5f}{:>6.3f}{:>12.5f}'.format(mean_ebeta[i], pip[i], beta_true[i]))
+        if i == 0:
+            print(dash)
+            print('{:<10s}{:>4s}{:>12s}'.format('Computed betas','PiP','True betas'))
+            print(dash)
+        else:
+            print('{:<12.5f}{:>6.3f}{:>12.5f}'.format(mean_ebeta[i], pip[i], beta_true[i]))
     
     # Store overall results
     oa_mean_s2e.append(mean_s2e)

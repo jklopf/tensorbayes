@@ -122,11 +122,11 @@ def gibbs():
     # Parameters setup
     Ebeta = np.zeros(M)
     ny = np.zeros(M)
-    Ew = 0.
+    Ew = 0.5
     epsilon = y
     NZ = np.zeros(1)
     sigma2_e = squared_norm(y) / (N*0.5)
-    sigma2_b = rbeta(1,1)
+    sigma2_b = rbeta(1.0, 1.0)
     v0E = 4.0
     v0B = 4.0
     s0B = sigma2_b / 2

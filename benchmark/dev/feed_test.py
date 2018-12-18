@@ -15,7 +15,6 @@ from timeit import repeat
 import psutil
 from tqdm import tqdm
 import argparse
-from sklearn import preprocessing
 tfd = tfp.distributions
 
 '''
@@ -40,7 +39,7 @@ tf.reset_default_graph()
 np.random.seed(1234)
 
 # Set graph-level seed
-# tf.set_random_seed(1234)
+tf.set_random_seed(1234)
 
 # Dev
 np.set_printoptions(formatter={'float_kind':'{:.5f}'.format})
@@ -63,8 +62,8 @@ parser.add_argument('n', metavar='N', type=int,
                     help='number of individuals')
 parser.add_argument('m', metavar='M', type=int,
                     help='number of covariates')
-#parser.add_argument('df', metavar='v0B, v0E', type=float,
-#                    help='degrees of freedom for inverse scaled chi^2 distribution')                    
+parser.add_argument('df', metavar='v0B, v0E', type=float,
+                    help='degrees of freedom for inverse scaled chi^2 distribution')                    
 #parser.add_argument('n_time', metavar='n_time', type=int,
 #                    help='number of script iteration')
 args = parser.parse_args()
@@ -72,7 +71,7 @@ args = parser.parse_args()
 N = args.n     # Number of individuals
 M = args.m     # Number of covariates
 var_g = 0.7   # genetic variance parameter
-#v0 = args.df
+v0 = args.df
 
 # Benchmark parameters and logs
 # oa: overall
@@ -88,7 +87,7 @@ def gibbs():
     global oa_mean_s2b
     global oa_mean_s2e
     global oa_cor, oa_pip
-    #global v0
+    global v0
 
     ###############################################################################
 
@@ -169,9 +168,9 @@ def gibbs():
         
         sigma_b = np.sqrt(var_g/M)
         sigma_e = np.sqrt(1 - var_g)
+        
         beta_true = np.random.normal(0, sigma_b , M)
-        x = sigma_b * np.random.randn(N, M)
-        x = preprocessing.scale(x)
+        x = sigma_b * np.random.randn(N, M) 
         y = np.dot(x, beta_true) + np.random.normal(0, sigma_e, N)
         return x, y, beta_true
 
@@ -216,8 +215,8 @@ def gibbs():
     Sigma2_b = tf.Variable(rbeta(1., 1.), dtype=tf.float32)
 
     # Constants:
-    v0E = tf.constant(4.0, dtype=tf.float32)
-    v0B = tf.constant(4.0, dtype=tf.float32)
+    v0E = tf.constant(v0, dtype=tf.float32)
+    v0B = tf.constant(v0, dtype=tf.float32)
     s0B = Sigma2_b.initialized_value() / 2
     s0E = Sigma2_e.initialized_value() / 2
 
@@ -304,10 +303,12 @@ def gibbs():
     
     # Dev: print the estimated betas, the PiP and the true betas
     dash = '-' * 40
-    print(dash)
-    print('{:<10s}{:>4s}{:>12s}'.format('Computed betas','PiP','True betas'))
-    print(dash)
     for i in range(M):
+        if i == 0:
+            print(dash)
+            print('{:<10s}{:>4s}{:>12s}'.format('Computed betas','PiP','True betas'))
+            print(dash)
+        else:
             print('{:<12.5f}{:>6.3f}{:>12.5f}'.format(mean_ebeta[i], pip[i], beta_true[i]))
 
     # Store overall results
@@ -326,7 +327,7 @@ rss = mem.rss / (1024**2)
 vms = mem.vms / (1024**2)
 
 # Output benchmark logs
-print('\nBenchmarking results: TensorBayes v4.2')
+print('\nBenchmarking results: NumPyBayes v3')
 print('N = {}, M = {}, var(g) = {}'.format(N,M,var_g))
 print('\nMemory usage')
 print('rss memory (physical): {} MiB'.format(rss))

@@ -178,10 +178,10 @@ def gibbs():
     ###############################################################################
 
     # Simulated data
-    x, y, beta_true = build_toy_dataset(N, M, var_g)
-    x = np.transpose(x)
-    X = tf.constant(x, shape=[M,N], dtype=tf.float32) # /!\ shape is now [M,N] /!\
-    Y = tf.constant(y, shape=[N,1], dtype=tf.float32)
+    X, Y, beta_true = build_toy_dataset(N, M, var_g)
+    X = np.transpose(X)
+    X = tf.constant(X, shape=[M,N], dtype=tf.float32) # /!\ shape is now [M,N] /!\
+    Y = tf.constant(Y, shape=[N,1], dtype=tf.float32)
 
     # Dataset API implementation
     data_index = tf.data.Dataset.range(M) # reflect which column was selected at random
@@ -210,7 +210,7 @@ def gibbs():
     Ebeta = tf.Variable(tf.zeros([M,1], dtype=tf.float32), dtype=tf.float32)
     Ny = tf.Variable(tf.zeros(M, dtype=tf.float32), dtype=tf.float32)
     NZ = tf.Variable(0., dtype=tf.float32)
-    Ew = tf.Variable(0., dtype=tf.float32)
+    Ew = tf.Variable(0.5, dtype=tf.float32)
     epsilon = tf.Variable(Y, dtype=tf.float32)
     Sigma2_e = tf.Variable(tf_squared_norm(Y) / (N*0.5), dtype=tf.float32)
     Sigma2_b = tf.Variable(rbeta(1., 1.), dtype=tf.float32)

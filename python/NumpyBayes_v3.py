@@ -10,7 +10,10 @@ import numpy as np
 #from scipy.stats import invgamma
 import time
 from sklearn import preprocessing
+from tqdm import tqdm
 
+
+np.random.seed(1234)
 
 # Timer
 start_time = time.clock()
@@ -33,7 +36,7 @@ start_time = time.clock()
 #    return 1.0 / np.random.gamma(df/2.0, df * scale / 2.0)
 
 def rinvchisq(df, scale):
-    sample = (df * scale)/np.random.chisquare(df)
+    sample = (df * scale)/ (np.random.chisquare(df) + 1e-8)
     return sample
 
 # rnorm is defined using the variance (i.e sigma^2)
@@ -163,7 +166,7 @@ beta_log = []
 
 
 
-for i in range(num_iter):
+for i in tqdm(range(num_iter)):
     
     time_in = time.clock()
     #Emu = sample_mu(N, sigma2_e, y, x, Ebeta)
