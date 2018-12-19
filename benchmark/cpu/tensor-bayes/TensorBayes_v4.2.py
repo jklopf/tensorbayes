@@ -14,6 +14,7 @@ import numpy as np
 from timeit import repeat
 import psutil
 import argparse
+from sklearn import preprocessing
 tfd = tfp.distributions
 
 '''
@@ -38,7 +39,7 @@ tf.reset_default_graph()
 np.random.seed(1234)
 
 # Set graph-level seed
-tf.set_random_seed(1234)
+#tf.set_random_seed(1234)
 
 # Dev
 np.set_printoptions(formatter={'float_kind':'{:.5f}'.format})
@@ -163,93 +164,92 @@ def gibbs():
         
         sigma_b = np.sqrt(var_g/M)
         sigma_e = np.sqrt(1 - var_g)
-        
         beta_true = np.random.normal(0, sigma_b , M)
-        x = sigma_b * np.random.randn(N, M) 
+        x = sigma_b * np.random.randn(N, M)
+        x = preprocessing.scale(x)
         y = np.dot(x, beta_true) + np.random.normal(0, sigma_e, N)
         return x, y, beta_true
 
     ###############################################################################
 
     # Simulated data
-    x, y, beta_true = build_toy_dataset(N, M, var_g)
-    x = np.transpose(x)
-    with tf.device('/gpu:0'):
-        X = tf.constant(x, shape=[M,N], dtype=tf.float32) # /!\ shape is now [M,N] /!\
-        Y = tf.constant(y, shape=[N,1], dtype=tf.float32)
+    X, Y, beta_true = build_toy_dataset(N, M, var_g)
+    X = np.transpose(X)
+    X = tf.constant(X, shape=[M,N], dtype=tf.float32) # /!\ shape is now [M,N] /!\
+    Y = tf.constant(Y, shape=[N,1], dtype=tf.float32)
 
-        # Dataset API implementation
-        data_index = tf.data.Dataset.range(M) # reflect which column was selected at random
-        data_x = tf.data.Dataset.from_tensor_slices(X) # reflects the randomly selected column
-        data = tf.data.Dataset.zip((data_index, data_x)).shuffle(M) # zip together and shuffle them
-        iterator = data.make_initializable_iterator() # reinitializable iterator: initialize at each gibbs iteration
-        ind, col = iterator.get_next() # dataset element
-        colx = tf.reshape(col, [N,1]) # reshape the array element as a column vector
-
-
-        # Could be implemented:
-        # building datasets using TF API without numpy
-
-        '''
-        TODO: 	Actually implement all the algorithm optimizations of the reference article
-                which are not implemented here. Depends on later implementations of input pipeline.
-        '''
-
-        #  Parameters setup
-        #
-        # Distinction between constant and variables
-        # Variables: values might change between evaluation of the graph
-        # (if something changes within the graph, it should be a variable)
-
-        # Variables:
-        Ebeta = tf.Variable(tf.zeros([M,1], dtype=tf.float32), dtype=tf.float32)
-        Ny = tf.Variable(tf.zeros(M, dtype=tf.float32), dtype=tf.float32)
-        NZ = tf.Variable(0., dtype=tf.float32)
-        Ew = tf.Variable(0., dtype=tf.float32)
-        epsilon = tf.Variable(Y, dtype=tf.float32)
-        Sigma2_e = tf.Variable(tf_squared_norm(Y) / (N*0.5), dtype=tf.float32)
-        Sigma2_b = tf.Variable(rbeta(1., 1.), dtype=tf.float32)
-
-        # Constants:
-        v0E = tf.constant(0.001, dtype=tf.float32)
-        v0B = tf.constant(0.001, dtype=tf.float32)
-        s0B = Sigma2_b.initialized_value() / 2
-        s0E = Sigma2_e.initialized_value() / 2
+    # Dataset API implementation
+    data_index = tf.data.Dataset.range(M) # reflect which column was selected at random
+    data_x = tf.data.Dataset.from_tensor_slices(X) # reflects the randomly selected column
+    data = tf.data.Dataset.zip((data_index, data_x)).shuffle(M) # zip together and shuffle them
+    iterator = data.make_initializable_iterator() # reinitializable iterator: initialize at each gibbs iteration
+    ind, col = iterator.get_next() # dataset element
+    colx = tf.reshape(col, [N,1]) # reshape the array element as a column vector
 
 
-        # Tensorboard graph
-        # TODO: look up what TensorBoard can do, this can be used in the end to have a graph representation of the algorithm.
-        # Also, for graph clarity, operations should be named.
-        #writer = tf.summary.FileWriter('.')
-        #writer.add_graph(tf.get_default_graph())
+    # Could be implemented:
+    # building datasets using TF API without numpy
+
+    '''
+    TODO: 	Actually implement all the algorithm optimizations of the reference article
+            which are not implemented here. Depends on later implementations of input pipeline.
+    '''
+
+    #  Parameters setup
+    #
+    # Distinction between constant and variables
+    # Variables: values might change between evaluation of the graph
+    # (if something changes within the graph, it should be a variable)
+
+    # Variables:
+    Ebeta = tf.Variable(tf.zeros([M,1], dtype=tf.float32), dtype=tf.float32)
+    Ny = tf.Variable(tf.zeros(M, dtype=tf.float32), dtype=tf.float32)
+    NZ = tf.Variable(0., dtype=tf.float32)
+    Ew = tf.Variable(0.5, dtype=tf.float32)
+    epsilon = tf.Variable(Y, dtype=tf.float32)
+    Sigma2_e = tf.Variable(tf_squared_norm(Y) / (N*0.5), dtype=tf.float32)
+    Sigma2_b = tf.Variable(rbeta(1., 1.), dtype=tf.float32)
+
+    # Constants:
+    v0E = tf.constant(4.0, dtype=tf.float32)
+    v0B = tf.constant(4.0, dtype=tf.float32)
+    s0B = Sigma2_b.initialized_value() / 2
+    s0E = Sigma2_e.initialized_value() / 2
 
 
-        # Computations: computation for each column
-        # ta: to assign
-        ta_beta, ta_ny, ta_eps = sample_beta(colx, epsilon, Sigma2_e, Sigma2_b, Ew, Ebeta[ind,0])
+    # Tensorboard graph
+    # TODO: look up what TensorBoard can do, this can be used in the end to have a graph representation of the algorithm.
+    # Also, for graph clarity, operations should be named.
+    #writer = tf.summary.FileWriter('.')
+    #writer.add_graph(tf.get_default_graph())
 
 
-        # Assignment ops:
-            # If tensorflow > 1.9 :
-            # As we don't chain assignment operations, assignment does not require to return the evaluation of the new value
-            # therefore, all read_value are set to False. This changes runtime for about 1 sec (see above).
-            # Run with `read_value = True`: 63.4s
-            # Run with `read_value = False`: 62.2s
-            # maybe there is a trick here for storing the log using read_value
+    # Computations: computation for each column
+    # ta: to assign
+    ta_beta, ta_ny, ta_eps = sample_beta(colx, epsilon, Sigma2_e, Sigma2_b, Ew, Ebeta[ind,0])
 
-        beta_item_assign_op = Ebeta[ind,0].assign(ta_beta) 		# when doing item assignment, read_value becomes an unexpected parameter, 
-        ny_item_assign_op = Ny[ind].assign(ta_ny)               # as tensorflow doesn't know what to return the single item or the whole variable
-        eps_up_fl = epsilon.assign(ta_eps)
-        fullpass = tf.group(beta_item_assign_op, ny_item_assign_op, eps_up_fl)
-        s2e_up = Sigma2_e.assign(sample_sigma2_e(N,epsilon,v0E,s0E))
-        nz_up = NZ.assign(tf.reduce_sum(Ny))
-        first_round = tf.group(nz_up,s2e_up)
 
-        # Control dependencies:
-        with tf.control_dependencies([first_round]):
-            ew_up = Ew.assign(sample_w(M,NZ))
-            s2b_up = Sigma2_b.assign(sample_sigma2_b(Ebeta,NZ,v0B,s0B))
-        param_up = tf.group(ew_up, s2b_up)
+    # Assignment ops:
+        # If tensorflow > 1.9 :
+        # As we don't chain assignment operations, assignment does not require to return the evaluation of the new value
+        # therefore, all read_value are set to False. This changes runtime for about 1 sec (see above).
+        # Run with `read_value = True`: 63.4s
+        # Run with `read_value = False`: 62.2s
+        # maybe there is a trick here for storing the log using read_value
+
+    beta_item_assign_op = Ebeta[ind,0].assign(ta_beta) 		# when doing item assignment, read_value becomes an unexpected parameter, 
+    ny_item_assign_op = Ny[ind].assign(ta_ny)               # as tensorflow doesn't know what to return the single item or the whole variable
+    eps_up_fl = epsilon.assign(ta_eps)
+    fullpass = tf.group(beta_item_assign_op, ny_item_assign_op, eps_up_fl)
+    s2e_up = Sigma2_e.assign(sample_sigma2_e(N,epsilon,v0E,s0E))
+    nz_up = NZ.assign(tf.reduce_sum(Ny))
+    first_round = tf.group(nz_up,s2e_up)
+
+    # Control dependencies:
+    with tf.control_dependencies([first_round]):
+        ew_up = Ew.assign(sample_w(M,NZ))
+        s2b_up = Sigma2_b.assign(sample_sigma2_b(Ebeta,NZ,v0B,s0B))
+    param_up = tf.group(ew_up, s2b_up)
 
     # Gibbs sampling iterations parameters and sampling logs
     num_iter = 5000
@@ -311,8 +311,7 @@ rss = mem.rss / (1024**2)
 vms = mem.vms / (1024**2)
 
 # Output benchmark logs
-print('\nBenchmarking results: TensorBayes v4.2 on deneb2.epfl.ch')
-print('with manual device placement')
+print('\nBenchmarking results: TensorBayes v4.2')
 print('N = {}, M = {}, var(g) = {}'.format(N,M,var_g))
 print('\nMemory usage')
 print('rss memory (physical): {} MiB'.format(rss))
@@ -330,7 +329,7 @@ results = np.stack((
     oa_pip,
     oa_time), axis=-1)
 
-filename = 'TBv4.2_n{}_m{}_results_manual.csv'.format(N,M)
+filename = 'TBv4.2_n{}_m{}_results.csv'.format(N,M)
 print('\nThe benchmarking results are stored in ' + filename)
 
 np.savetxt(

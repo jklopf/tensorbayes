@@ -14,6 +14,7 @@ import numpy as np
 from timeit import repeat
 import psutil
 import argparse
+from sklearn import preprocessing
 tfd = tfp.distributions
 
 '''
@@ -38,7 +39,7 @@ tf.reset_default_graph()
 np.random.seed(1234)
 
 # Set graph-level seed
-tf.set_random_seed(1234)
+#tf.set_random_seed(1234)
 
 # Dev
 np.set_printoptions(formatter={'float_kind':'{:.5f}'.format})
@@ -163,19 +164,19 @@ def gibbs():
         
         sigma_b = np.sqrt(var_g/M)
         sigma_e = np.sqrt(1 - var_g)
-        
         beta_true = np.random.normal(0, sigma_b , M)
-        x = sigma_b * np.random.randn(N, M) 
+        x = sigma_b * np.random.randn(N, M)
+        x = preprocessing.scale(x)
         y = np.dot(x, beta_true) + np.random.normal(0, sigma_e, N)
         return x, y, beta_true
 
     ###############################################################################
 
     # Simulated data
-    x, y, beta_true = build_toy_dataset(N, M, var_g)
-    x = np.transpose(x)
-    X = tf.constant(x, shape=[M,N], dtype=tf.float32) # /!\ shape is now [M,N] /!\
-    Y = tf.constant(y, shape=[N,1], dtype=tf.float32)
+    X, Y, beta_true = build_toy_dataset(N, M, var_g)
+    X = np.transpose(X)
+    X = tf.constant(X, shape=[M,N], dtype=tf.float32) # /!\ shape is now [M,N] /!\
+    Y = tf.constant(Y, shape=[N,1], dtype=tf.float32)
 
     # Dataset API implementation
     data_index = tf.data.Dataset.range(M) # reflect which column was selected at random
@@ -204,14 +205,14 @@ def gibbs():
     Ebeta = tf.Variable(tf.zeros([M,1], dtype=tf.float32), dtype=tf.float32)
     Ny = tf.Variable(tf.zeros(M, dtype=tf.float32), dtype=tf.float32)
     NZ = tf.Variable(0., dtype=tf.float32)
-    Ew = tf.Variable(0., dtype=tf.float32)
+    Ew = tf.Variable(0.5, dtype=tf.float32)
     epsilon = tf.Variable(Y, dtype=tf.float32)
     Sigma2_e = tf.Variable(tf_squared_norm(Y) / (N*0.5), dtype=tf.float32)
     Sigma2_b = tf.Variable(rbeta(1., 1.), dtype=tf.float32)
 
     # Constants:
-    v0E = tf.constant(0.001, dtype=tf.float32)
-    v0B = tf.constant(0.001, dtype=tf.float32)
+    v0E = tf.constant(4.0, dtype=tf.float32)
+    v0B = tf.constant(4.0, dtype=tf.float32)
     s0B = Sigma2_b.initialized_value() / 2
     s0E = Sigma2_e.initialized_value() / 2
 
@@ -310,8 +311,7 @@ rss = mem.rss / (1024**2)
 vms = mem.vms / (1024**2)
 
 # Output benchmark logs
-print('\nBenchmarking results: TensorFlow v4.2 on deneb2.epfl.ch')
-print('without manual device placement')
+print('\nBenchmarking results: TensorBayes v4.2')
 print('N = {}, M = {}, var(g) = {}'.format(N,M,var_g))
 print('\nMemory usage')
 print('rss memory (physical): {} MiB'.format(rss))
@@ -329,7 +329,7 @@ results = np.stack((
     oa_pip,
     oa_time), axis=-1)
 
-filename = 'TBv4.2_n{}_m{}_results_auto.csv'.format(N,M)
+filename = 'TBv4.2_n{}_m{}_results.csv'.format(N,M)
 print('\nThe benchmarking results are stored in ' + filename)
 
 np.savetxt(

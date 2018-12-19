@@ -13,6 +13,7 @@ import numpy as np
 import argparse
 from timeit import repeat
 import psutil
+from sklearn import preprocessing
 
 
 # Reproducibility
@@ -61,7 +62,7 @@ def gibbs():
 
     # Distribution functions
     def rinvchisq(df, scale):
-        sample = (df * scale)/(np.random.chisquare(df) + 1e-8)
+        sample = (df * scale)/np.random.chisquare(df)
         return sample
 
     def rnorm(mean, var):
@@ -110,7 +111,7 @@ def gibbs():
         sigma_e = np.sqrt((1 - var_g))
         beta_true = np.random.normal(0, sigma_b , M)
         x = sigma_b * np.random.randn(N, M)
-        #x=preprocessing.scale(x)
+        x = preprocessing.scale(x)
         y = np.dot(x, beta_true) + np.random.normal(0, sigma_e, N)
         return x, y, beta_true
 
@@ -122,12 +123,12 @@ def gibbs():
     # Parameters setup
     Ebeta = np.zeros(M)
     ny = np.zeros(M)
-    Ew = np.zeros(1)
+    Ew = 0.5
     epsilon = y
     NZ = np.zeros(1)
     sigma2_e = squared_norm(y) / (N*0.5)
     sigma2_b = rbeta(1,1)
-    v0E, v0B = 0.001,0.001
+    v0E, v0B = 4.0, 4.0
     s0B = sigma2_b / 2
     s0E = sigma2_e / 2
 
@@ -173,8 +174,8 @@ def gibbs():
         if(i >= burned_samples_threshold):
             sigma_e_log.append(sigma2_e)
             sigma_b_log.append(sigma2_b)
-            ny_log.append(ny)
-            beta_log.append(Ebeta.reshape(M))
+            ny_log.append(np.copy(ny))
+            beta_log.append(np.copy(Ebeta))
     
     # Store local results
     mean_ebeta = np.mean(beta_log, axis = 0)

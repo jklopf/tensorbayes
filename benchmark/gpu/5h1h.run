@@ -3,12 +3,12 @@
 #SBATCH --time=12:0:0
 #SBATCH --qos=gpu
 #SBATCH --gres=gpu:1
+#SBATCH --mem 40960
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=1
 #SBATCH --partition=gpu
-#SBATCH --mem 40960
  
 slmodules -s x86_E5v2_Mellanox_GPU
 module load gcc cuda cudnn mvapich2 openblas
 source ~/tensorbayes/tensorflow-1.9/bin/activate
-srun python TensorBayes_v4.2_gpu_manual.py 50000 100 20 > d2_manual.log
+srun python TensorBayes_v4.2.py 500 100 20 > 5h1h.log
