@@ -55,7 +55,7 @@ oa_pip = []
 def gibbs():
     global oa_mean_s2b
     global oa_mean_s2e
-    global oa_cor
+    global oa_cor, oa_pip
     global N, M
 
     ###############################################################################

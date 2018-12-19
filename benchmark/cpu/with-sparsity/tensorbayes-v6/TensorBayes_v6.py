@@ -4,6 +4,7 @@ Script for development of benchmark the dirac spike model using TensorFlow.
 This script takes 2 arguments:
 N:              Number of individuals
 M:              Number of covariates
+pNZ:            Proportion of non-zero covariates
 
 Everything is sent to stdout.
 """
@@ -57,17 +58,22 @@ np.set_printoptions(formatter={'float_kind':'{:.5f}'.format})
 
 parser = argparse.ArgumentParser(
     description='Run a simulation study of penalized regression. \
-    Please provide the number of individuals, number of covariates and number of script iteration.')
+    Please provide the number of individuals, number of covariates, number of script iteration and number of non-zero covariates.')
 parser.add_argument('n', metavar='N', type=int,
                     help='number of individuals')
 parser.add_argument('m', metavar='M', type=int,
                     help='number of covariates')
+parser.add_argument('mNZ', metavar='mNZ', type=int,
+                    help='number of non-zero covariates out of M covariates')
 parser.add_argument('n_time', metavar='n_time', type=int,
-                    help='number of script iteration')
+                    help='number of script iteration, i.e. different datasets')
+
+
 args = parser.parse_args()
 
 N = args.n     # Number of individuals
 M = args.m     # Number of covariates
+mNZ = args.mNZ
 var_g = 0.7   # genetic variance parameter
 
 # Benchmark parameters and logs
@@ -75,15 +81,15 @@ var_g = 0.7   # genetic variance parameter
 oa_mean_s2b = []
 oa_mean_s2e = []
 oa_cor = []
-oa_pip = []
+oa_nip = []
 
 
 # Gibbs sampler function
 def gibbs():
-    global N, M
+    global N, M, var_g, mNZ
     global oa_mean_s2b
     global oa_mean_s2e
-    global oa_cor, oa_pip
+    global oa_cor, oa_nip
 
     ###############################################################################
 
@@ -98,7 +104,7 @@ def gibbs():
     def rnorm(mean, var):
         # rnorm is defined using the variance (i.e sigma^2)
         sd = tf.sqrt(var)
-        dist = tfd.Normal(loc= mean, scale= sd)
+        dist = tfd.Normal(loc=mean, scale=sd)
         sample = dist.sample()
         return sample
 
@@ -111,7 +117,7 @@ def gibbs():
         # scale factor = tau^2
         #e = tf.constant(1e-8, dtype=tf.float32)
         dist = tfd.Chi2(df)
-        sample = (df * scale)/ dist.sample()
+        sample = (df * scale)/dist.sample()
         return sample
 
     def rbernoulli(p):
@@ -159,12 +165,12 @@ def gibbs():
 
     ###############################################################################
 
-    # Data simulation function
-    def build_toy_dataset(N, M, var_g):
-        
-        sigma_b = np.sqrt(var_g/M)
+    # Data simulation function with sparsity
+    def build_toy_dataset(N, M, var_g, mNZ):
+        sigma_b = np.sqrt(var_g/mNZ)
         sigma_e = np.sqrt(1 - var_g)
-        beta_true = np.random.normal(0, sigma_b , M)
+        beta_true = np.random.normal(0, sigma_b , mNZ)
+        beta_true = np.append(beta_true,np.zeros(M-mNZ))
         x = sigma_b * np.random.randn(N, M)
         x = preprocessing.scale(x)
         y = np.dot(x, beta_true) + np.random.normal(0, sigma_e, N)
@@ -173,13 +179,13 @@ def gibbs():
     ###############################################################################
 
     # Simulated data
-    X, Y, beta_true = build_toy_dataset(N, M, var_g)
+    X, Y, beta_true = build_toy_dataset(N, M, var_g, mNZ)
     X = np.transpose(X)
     X = tf.constant(X, shape=[M,N], dtype=tf.float32) # /!\ shape is now [M,N] /!\
     Y = tf.constant(Y, shape=[N,1], dtype=tf.float32)
 
     # Dataset API implementation
-    data_index = tf.data.Dataset.range(M) # reflect which column was selected at random
+    data_index = tf.data.Dataset.range(M) # reflect which column (index) was selected at random
     data_x = tf.data.Dataset.from_tensor_slices(X) # reflects the randomly selected column
     data = tf.data.Dataset.zip((data_index, data_x)).shuffle(M) # zip together and shuffle them
     iterator = data.make_initializable_iterator() # reinitializable iterator: initialize at each gibbs iteration
@@ -192,7 +198,7 @@ def gibbs():
 
     '''
     TODO: 	Actually implement all the algorithm optimizations of the reference article
-            which are not implemented here. Depends on later implementations of input pipeline.
+            which may not be implemented here. Depends on later implementations of input pipeline.
     '''
 
     #  Parameters setup
@@ -238,7 +244,7 @@ def gibbs():
         # maybe there is a trick here for storing the log using read_value
 
     beta_item_assign_op = Ebeta[ind,0].assign(ta_beta) 		# when doing item assignment, read_value becomes an unexpected parameter, 
-    ny_item_assign_op = Ny[ind].assign(ta_ny)               # as tensorflow doesn't know what to return the single item or the whole variable
+    ny_item_assign_op = Ny[ind].assign(ta_ny)               # as tensorflow doesn't know what to return between the single item or the whole variable
     eps_up_fl = epsilon.assign(ta_eps)
     fullpass = tf.group(beta_item_assign_op, ny_item_assign_op, eps_up_fl)
     s2e_up = Sigma2_e.assign(sample_sigma2_e(N,epsilon,v0E,s0E))
@@ -299,7 +305,7 @@ def gibbs():
     # Store overall results
     oa_mean_s2e.append(mean_s2e)
     oa_mean_s2b.append(mean_s2b)
-    oa_pip.append(len([num for num in pip if num >= 0.95]))
+    oa_nip.append(len([num for num in pip if num >= 0.95]))
     oa_cor.append(corr_ebeta_betatrue)
 
 # Measure running times and execute the code n_time
@@ -311,8 +317,10 @@ rss = mem.rss / (1024**2)
 vms = mem.vms / (1024**2)
 
 # Output benchmark logs
-print('\nBenchmarking results: TensorBayes v4.2')
-print('N = {}, M = {}, var(g) = {}'.format(N,M,var_g))
+print('\nBenchmarking results: TensorBayes v6')
+print('N = {}, M = {}, mNZ = {}, var(g) = {}'.format(N,M,mNZ,var_g))
+print('Expected Sigma2_e: {}'.format(np.round(1-var_g, 1)))
+print('Expected Sigma2_b: {}'.format(np.round(var_g/mNZ, 5)))
 print('\nMemory usage')
 print('rss memory (physical): {} MiB'.format(rss))
 print('vms memory (virtual): {} MiB'.format(vms))
@@ -326,16 +334,16 @@ results = np.stack((
     oa_mean_s2e,
     oa_mean_s2b,
     oa_cor,
-    oa_pip,
+    oa_nip,
     oa_time), axis=-1)
 
-filename = 'TBv4.2_n{}_m{}_results.csv'.format(N,M)
+filename = 'TBv6_n{}_m{}_mNZ{}_results.csv'.format(N,M,mNZ)
 print('\nThe benchmarking results are stored in ' + filename)
 
 np.savetxt(
     filename,
     results,
     delimiter=',',
-    header='sigma2_e, sigma2_b, cor(eb,bt), PiP, time',
+    header='sigma2_e, sigma2_b, corr(eb|bt), nIP, time',
     fmt='%.8f')
 
