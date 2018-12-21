@@ -174,6 +174,7 @@ def gibbs():
         x = sigma_b * np.random.randn(N, M)
         x = preprocessing.scale(x)
         y = np.dot(x, beta_true) + np.random.normal(0, sigma_e, N)
+        y = preprocessing.scale(y)
         return x, y, beta_true
 
     ###############################################################################
