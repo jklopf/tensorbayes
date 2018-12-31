@@ -1,6 +1,6 @@
 #!/bin/bash -l
 #SBATCH --nodes=1
-#SBATCH --time=48:0:0
+#SBATCH --time=480:0:0
 #SBATCH --qos=gpu
 #SBATCH --gres=gpu:1
 #SBATCH --mem 40960
@@ -11,4 +11,4 @@
 slmodules -s x86_E5v2_Mellanox_GPU
 module load gcc cuda cudnn mvapich2 openblas
 source ~/tensorbayes/tensorflow-1.9/bin/activate
-srun python TensorBayes_v6.py 1500 6000 300 20 > tb_15h6k3h_s.log
+srun python TensorBayes_v6.py 1500 6000 300 5 > tb_15h6k3h_s.log
