@@ -1,0 +1,45 @@
+
+Benchmarking results: TensorBayes v6
+N = 50, M = 100, mNZ = 5, var(g) = 0.7
+Expected Sigma2_e: 0.3
+Expected Sigma2_b: 0.14
+
+Memory usage
+rss memory (physical): 247.29296875 MiB
+vms memory (virtual): 1842.41015625 MiB
+
+Timing results
+Minimal time of execution: 215.848s
+Mean time of execution memory: 215.848s
+s2e,s2b,cor,pip,time
+[[0.99990 0.00000 -0.19538 0.00000 215.84800]]
+
+Benchmarking results: TensorBayes v6
+N = 50, M = 100, mNZ = 5, var(g) = 0.7
+Expected Sigma2_e: 0.3
+Expected Sigma2_b: 0.14
+
+Memory usage
+rss memory (physical): 247.00390625 MiB
+vms memory (virtual): 1842.4140625 MiB
+
+Timing results
+Minimal time of execution: 222.7737s
+Mean time of execution memory: 222.7737s
+s2e,s2b,cor,pip,time
+[[0.18243 0.08683 0.98312 3.00000 222.77370]]
+
+Benchmarking results: TensorBayes v6
+N = 50, M = 100, mNZ = 5, var(g) = 0.7
+Expected Sigma2_e: 0.3
+Expected Sigma2_b: 0.14
+
+Memory usage
+rss memory (physical): 247.1328125 MiB
+vms memory (virtual): 1842.42578125 MiB
+
+Timing results
+Minimal time of execution: 216.5057s
+Mean time of execution memory: 216.5057s
+s2e,s2b,cor,pip,time
+[[0.00035 0.02595 0.70334 26.00000 216.50570]]
