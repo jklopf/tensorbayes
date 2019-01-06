@@ -1,0 +1,27 @@
+2018-12-19 18:51:34.908464: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1392] Found device 0 with properties: 
+name: Tesla K40m major: 3 minor: 5 memoryClockRate(GHz): 0.745
+pciBusID: 0000:83:00.0
+totalMemory: 11.17GiB freeMemory: 11.09GiB
+2018-12-19 18:51:34.908524: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1471] Adding visible gpu devices: 0
+2018-12-19 18:51:36.828876: I tensorflow/core/common_runtime/gpu/gpu_device.cc:952] Device interconnect StreamExecutor with strength 1 edge matrix:
+2018-12-19 18:51:36.828925: I tensorflow/core/common_runtime/gpu/gpu_device.cc:958]      0 
+2018-12-19 18:51:36.828934: I tensorflow/core/common_runtime/gpu/gpu_device.cc:971] 0:   N 
+2018-12-19 18:51:36.829318: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1084] Created TensorFlow device (/job:localhost/replica:0/task:0/device:GPU:0 with 10754 MB memory) -> physical GPU (device: 0, name: Tesla K40m, pci bus id: 0000:83:00.0, compute capability: 3.5)
+2018-12-20 09:13:48.069989: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1471] Adding visible gpu devices: 0
+2018-12-20 09:13:48.070051: I tensorflow/core/common_runtime/gpu/gpu_device.cc:952] Device interconnect StreamExecutor with strength 1 edge matrix:
+2018-12-20 09:13:48.070061: I tensorflow/core/common_runtime/gpu/gpu_device.cc:958]      0 
+2018-12-20 09:13:48.070068: I tensorflow/core/common_runtime/gpu/gpu_device.cc:971] 0:   N 
+2018-12-20 09:13:48.070227: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1084] Created TensorFlow device (/job:localhost/replica:0/task:0/device:GPU:0 with 10754 MB memory) -> physical GPU (device: 0, name: Tesla K40m, pci bus id: 0000:83:00.0, compute capability: 3.5)
+2018-12-20 23:36:01.811797: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1471] Adding visible gpu devices: 0
+2018-12-20 23:36:01.811869: I tensorflow/core/common_runtime/gpu/gpu_device.cc:952] Device interconnect StreamExecutor with strength 1 edge matrix:
+2018-12-20 23:36:01.811879: I tensorflow/core/common_runtime/gpu/gpu_device.cc:958]      0 
+2018-12-20 23:36:01.811886: I tensorflow/core/common_runtime/gpu/gpu_device.cc:971] 0:   N 
+2018-12-20 23:36:01.812037: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1084] Created TensorFlow device (/job:localhost/replica:0/task:0/device:GPU:0 with 10754 MB memory) -> physical GPU (device: 0, name: Tesla K40m, pci bus id: 0000:83:00.0, compute capability: 3.5)
+2018-12-21 13:58:34.984748: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1471] Adding visible gpu devices: 0
+2018-12-21 13:58:34.984803: I tensorflow/core/common_runtime/gpu/gpu_device.cc:952] Device interconnect StreamExecutor with strength 1 edge matrix:
+2018-12-21 13:58:34.984813: I tensorflow/core/common_runtime/gpu/gpu_device.cc:958]      0 
+2018-12-21 13:58:34.984819: I tensorflow/core/common_runtime/gpu/gpu_device.cc:971] 0:   N 
+2018-12-21 13:58:34.984958: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1084] Created TensorFlow device (/job:localhost/replica:0/task:0/device:GPU:0 with 10754 MB memory) -> physical GPU (device: 0, name: Tesla K40m, pci bus id: 0000:83:00.0, compute capability: 3.5)
+slurmstepd: error: *** JOB 4396061 ON r08-nodegpu16 CANCELLED AT 2018-12-21T18:51:08 DUE TO TIME LIMIT ***
+srun: Job step aborted: Waiting up to 32 seconds for job step to finish.
+slurmstepd: error: *** STEP 4396061.0 ON r08-nodegpu16 CANCELLED AT 2018-12-21T18:51:08 DUE TO TIME LIMIT ***

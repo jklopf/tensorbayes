@@ -1,0 +1,32 @@
+2018-12-21 12:18:25.270266: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1392] Found device 0 with properties: 
+name: Tesla K40m major: 3 minor: 5 memoryClockRate(GHz): 0.745
+pciBusID: 0000:02:00.0
+totalMemory: 11.17GiB freeMemory: 11.09GiB
+2018-12-21 12:18:25.270321: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1471] Adding visible gpu devices: 0
+2018-12-21 12:18:26.101878: I tensorflow/core/common_runtime/gpu/gpu_device.cc:952] Device interconnect StreamExecutor with strength 1 edge matrix:
+2018-12-21 12:18:26.101925: I tensorflow/core/common_runtime/gpu/gpu_device.cc:958]      0 
+2018-12-21 12:18:26.101934: I tensorflow/core/common_runtime/gpu/gpu_device.cc:971] 0:   N 
+2018-12-21 12:18:26.102337: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1084] Created TensorFlow device (/job:localhost/replica:0/task:0/device:GPU:0 with 10754 MB memory) -> physical GPU (device: 0, name: Tesla K40m, pci bus id: 0000:02:00.0, compute capability: 3.5)
+2018-12-21 22:41:50.716826: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1471] Adding visible gpu devices: 0
+2018-12-21 22:41:50.716886: I tensorflow/core/common_runtime/gpu/gpu_device.cc:952] Device interconnect StreamExecutor with strength 1 edge matrix:
+2018-12-21 22:41:50.716896: I tensorflow/core/common_runtime/gpu/gpu_device.cc:958]      0 
+2018-12-21 22:41:50.716902: I tensorflow/core/common_runtime/gpu/gpu_device.cc:971] 0:   N 
+2018-12-21 22:41:50.717031: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1084] Created TensorFlow device (/job:localhost/replica:0/task:0/device:GPU:0 with 10754 MB memory) -> physical GPU (device: 0, name: Tesla K40m, pci bus id: 0000:02:00.0, compute capability: 3.5)
+2018-12-22 09:00:21.519860: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1471] Adding visible gpu devices: 0
+2018-12-22 09:00:21.519918: I tensorflow/core/common_runtime/gpu/gpu_device.cc:952] Device interconnect StreamExecutor with strength 1 edge matrix:
+2018-12-22 09:00:21.519928: I tensorflow/core/common_runtime/gpu/gpu_device.cc:958]      0 
+2018-12-22 09:00:21.519935: I tensorflow/core/common_runtime/gpu/gpu_device.cc:971] 0:   N 
+2018-12-22 09:00:21.520065: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1084] Created TensorFlow device (/job:localhost/replica:0/task:0/device:GPU:0 with 10754 MB memory) -> physical GPU (device: 0, name: Tesla K40m, pci bus id: 0000:02:00.0, compute capability: 3.5)
+2018-12-22 19:17:02.316671: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1471] Adding visible gpu devices: 0
+2018-12-22 19:17:02.316719: I tensorflow/core/common_runtime/gpu/gpu_device.cc:952] Device interconnect StreamExecutor with strength 1 edge matrix:
+2018-12-22 19:17:02.316729: I tensorflow/core/common_runtime/gpu/gpu_device.cc:958]      0 
+2018-12-22 19:17:02.316736: I tensorflow/core/common_runtime/gpu/gpu_device.cc:971] 0:   N 
+2018-12-22 19:17:02.316872: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1084] Created TensorFlow device (/job:localhost/replica:0/task:0/device:GPU:0 with 10754 MB memory) -> physical GPU (device: 0, name: Tesla K40m, pci bus id: 0000:02:00.0, compute capability: 3.5)
+2018-12-23 05:47:48.941961: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1471] Adding visible gpu devices: 0
+2018-12-23 05:47:48.942016: I tensorflow/core/common_runtime/gpu/gpu_device.cc:952] Device interconnect StreamExecutor with strength 1 edge matrix:
+2018-12-23 05:47:48.942027: I tensorflow/core/common_runtime/gpu/gpu_device.cc:958]      0 
+2018-12-23 05:47:48.942034: I tensorflow/core/common_runtime/gpu/gpu_device.cc:971] 0:   N 
+2018-12-23 05:47:48.942175: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1084] Created TensorFlow device (/job:localhost/replica:0/task:0/device:GPU:0 with 10754 MB memory) -> physical GPU (device: 0, name: Tesla K40m, pci bus id: 0000:02:00.0, compute capability: 3.5)
+slurmstepd: error: *** STEP 4409203.0 ON r08-nodegpu03 CANCELLED AT 2018-12-23T12:18:35 DUE TO TIME LIMIT ***
+slurmstepd: error: *** JOB 4409203 ON r08-nodegpu03 CANCELLED AT 2018-12-23T12:18:35 DUE TO TIME LIMIT ***
+srun: Job step aborted: Waiting up to 32 seconds for job step to finish.
