@@ -27,5 +27,5 @@ for Gibbs sampling algorithms is discussed.
 The full thesis is available for download at this [link](https://drive.google.com/file/d/1ojLLjuzZpHP5mlUQpXt7UFQBjvRI3v07/view?usp=sharing).
 
 ## Archive
-[Previous README (outdated)]()
+[Previous README (outdated)](https://github.com/jklopf/tensorbayes/blob/master/old_readme.md)
 
