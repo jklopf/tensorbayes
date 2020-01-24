@@ -2,9 +2,9 @@
 Repository for Master Thesis of Science in Molecular Life Sciences, specialisation in Bioinformatics, UNIL, by Jonathan Klopfenstein.
 
 ## Description
-TensorBayes is a TensorFlow implementation of a Gibbs sampling algorithm for Bayesian penalized regression with a spike and slab prior, intended for genome wide assotiation studies. The Bayesian mixed linear model is as follows: with $N$ individuals and $M$ markers,  
-$$\vec{y} = X\vec{\beta} + \vec{\epsilon}$$
-where $\vec{y}$ is the vector of phenotype, $X$ is the genotype matrix, $\beta$ is the vector of the marker effect sizes and $\vec{\epsilon}$ is the vector of the residual effects.
+TensorBayes is a TensorFlow implementation of a Gibbs sampling algorithm for Bayesian penalized regression with a spike and slab prior, intended for genome wide assotiation studies. The Bayesian mixed linear model is as follows: with N individuals and M markers,  
+![equation](http://bit.ly/37qsdYe)
+where y is the vector of phenotype, x is the genotype matrix, beta is the vector of the marker effect sizes and epsilon the vector of the residual effects.
 
 ## Abstract
 In the context of quantitative genetics, Bayesian learning models have been
