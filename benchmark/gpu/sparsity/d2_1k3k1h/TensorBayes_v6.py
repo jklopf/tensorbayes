@@ -327,7 +327,7 @@ print('rss memory (physical): {} MiB'.format(rss))
 print('vms memory (virtual): {} MiB'.format(vms))
 print('\nTiming results')
 print('Minimal time of execution: {}s'.format(oa_time.min()))
-print('Mean time of execution memory: {}s'.format(np.mean(oa_time)))
+print('Mean time of execution : {}s'.format(np.mean(oa_time)))
 
 # Write results to a .csv
 # Order: s2e | s2b | cor | pip | time

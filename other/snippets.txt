@@ -45,3 +45,13 @@ np.set_printoptions(
 ssh -L 2222:deneb2.epfl.ch:22 tremplin.epfl.ch -l 228327
 *open other terminal*
 ssh -p 2222 localhost -l klopfens
+
+nohup bash dx_n.sh 500 100 100 1 &
+nohup bash dx_n.sh 5000 500 500 2 &
+nohup bash dx_n.sh 5000 1000 1000 3 &
+nohup bash dx_n.sh 20000 10000 10000 4 &
+
+nohup bash dx_n.sh 500 1000 50 1 &
+nohup bash dx_n.sh 1000 3000 100 2 &
+nohup bash dx_n.sh 1500 6000 300 3 &
+nohup bash dx_n.sh 2000 10000 400 4 &

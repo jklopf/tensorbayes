@@ -5,6 +5,7 @@ This script takes 2 arguments:
 N:              Number of individuals
 M:              Number of covariates
 pNZ:            Proportion of non-zero covariates
+n: 		Number of time the simulation study is performed
 
 Everything is sent to stdout.
 """
@@ -17,7 +18,6 @@ import psutil
 import argparse
 from sklearn import preprocessing
 tfd = tfp.distributions
-from tqdm import tqdm
 
 '''
 This version is able to retrieve the simulated parameters and
@@ -25,7 +25,7 @@ store the history of the sampling, and implement the tensorflow dataset API inst
 placeholders to feed data. Compared to other tensorflow-based version, the runtime has reduced of 10s.
 
 It also implements algorithm optimization, where whole dataset matrice multiplication are avoided:
-Emu is not sampled anymore.
+Emu is not sampled adeltamore.
 epsilon is updated only during the dataset full pass, and not also after.
 
 It also implements control dependencies, to minimize the number of sess.run() calls.
@@ -38,7 +38,7 @@ tf.reset_default_graph()
 # Seed setting for reproducable research.
 
 # Set numpy seed
-# np.random.seed(1234)
+np.random.seed(1234)
 
 # Set graph-level seed
 #tf.set_random_seed(1234)
@@ -160,9 +160,9 @@ def gibbs():
             return 0., 0.
         def case_one():
             return rnorm(rj/Cj, s2e/Cj), 1.
-        beta_new, ny_new = tf.cond(tf.equal(toss,1),case_one, case_zero)
-        eps = eps - (x_j*beta_new)
-        return beta_new, ny_new, eps 
+        beta_npi, delta_npi = tf.cond(tf.equal(toss,1),case_one, case_zero)
+        eps = eps - (x_j*beta_npi)
+        return beta_npi, delta_npi, eps 
 
     ###############################################################################
 
@@ -190,17 +190,14 @@ def gibbs():
     data_index = tf.data.Dataset.range(M) # reflect which column (index) was selected at random
     data_x = tf.data.Dataset.from_tensor_slices(X) # reflects the randomly selected column
     data = tf.data.Dataset.zip((data_index, data_x)).shuffle(M) # zip together and shuffle them
-    iterator = data.make_initializable_iterator() # reinitializable iterator: initialize at each gibbs iteration
+    iterator = data.make_initializable_iterator() # reinitializable iterator: initialized at each gibbs iteration
     ind, col = iterator.get_next() # dataset element
-    colx = tf.reshape(col, [N,1]) # reshape the array element as a column vector
+    Xj = tf.reshape(col, [N,1]) # reshape the array element as a column vector
 
 
-    # Could be implemented:
-    # building datasets using TF API without numpy
 
     '''
-    TODO: 	Actually implement all the algorithm optimizations of the reference article
-            which may not be implemented here. Depends on later implementations of input pipeline.
+
     '''
 
     #  Parameters setup
@@ -211,9 +208,9 @@ def gibbs():
 
     # Variables:
     Ebeta = tf.Variable(tf.zeros([M,1], dtype=tf.float32), dtype=tf.float32)
-    Ny = tf.Variable(tf.zeros(M, dtype=tf.float32), dtype=tf.float32)
+    delta = tf.Variable(tf.zeros(M, dtype=tf.float32), dtype=tf.float32)
     NZ = tf.Variable(0., dtype=tf.float32)
-    Ew = tf.Variable(0.5, dtype=tf.float32)
+    pi = tf.Variable(0.5, dtype=tf.float32)
     epsilon = tf.Variable(Y, dtype=tf.float32)
     Sigma2_e = tf.Variable(tf_squared_norm(Y) / (N*0.5), dtype=tf.float32)
     Sigma2_b = tf.Variable(rbeta(1., 1.), dtype=tf.float32)
@@ -225,46 +222,36 @@ def gibbs():
     s0E = Sigma2_e.initialized_value() / 2
 
 
-    # Tensorboard graph
-    # TODO: look up what TensorBoard can do, this can be used in the end to have a graph representation of the algorithm.
-    # Also, for graph clarity, operations should be named.
-    #writer = tf.summary.FileWriter('.')
-    #writer.add_graph(tf.get_default_graph())
 
 
     # Computations: computation for each column
     # ta: to assign
-    ta_beta, ta_ny, ta_eps = sample_beta(colx, epsilon, Sigma2_e, Sigma2_b, Ew, Ebeta[ind,0])
+    ta_beta, ta_delta, ta_eps = sample_beta(Xj, epsilon, Sigma2_e, Sigma2_b, Pi, Ebeta[ind,0])
 
 
     # Assignment ops:
-        # If tensorflow > 1.9 :
-        # As we don't chain assignment operations, assignment does not require to return the evaluation of the new value
-        # therefore, all read_value are set to False. This changes runtime for about 1 sec (see above).
-        # Run with `read_value = True`: 63.4s
-        # Run with `read_value = False`: 62.2s
-        # maybe there is a trick here for storing the log using read_value
 
-    beta_item_assign_op = Ebeta[ind,0].assign(ta_beta) 		# when doing item assignment, read_value becomes an unexpected parameter, 
-    ny_item_assign_op = Ny[ind].assign(ta_ny)               # as tensorflow doesn't know what to return between the single item or the whole variable
+    beta_item_assign_op = Ebeta[ind,0].assign(ta_beta) 		
+    delta_item_assign_op = delta[ind].assign(ta_delta)               
     eps_up_fl = epsilon.assign(ta_eps)
-    fullpass = tf.group(beta_item_assign_op, ny_item_assign_op, eps_up_fl)
+    fullpass = tf.group(beta_item_assign_op, delta_item_assign_op, eps_up_fl)
     s2e_up = Sigma2_e.assign(sample_sigma2_e(N,epsilon,v0E,s0E))
-    nz_up = NZ.assign(tf.reduce_sum(Ny))
-    first_round = tf.group(nz_up,s2e_up)
+    nz_up = NZ.assign(tf.reduce_sum(delta))
+    
 
     # Control dependencies:
+    first_round = tf.group(nz_up,s2e_up)
     with tf.control_dependencies([first_round]):
-        ew_up = Ew.assign(sample_w(M,NZ))
+        pi_up = Pi.assign(sample_w(M,NZ))
         s2b_up = Sigma2_b.assign(sample_sigma2_b(Ebeta,NZ,v0B,s0B))
-    param_up = tf.group(ew_up, s2b_up)
+    param_up = tf.group(pi_up, s2b_up)
 
     # Gibbs sampling iterations parameters and sampling logs
     num_iter = 5000
     burned_samples_threshold = 2000
     param_log = [] # order: Sigma2_e, Sigma2_b
     beta_log = [] # as rank 1 vector
-    ny_log = []
+    delta_log = []
     # Launch of session
     with tf.Session() as sess:
 
@@ -272,7 +259,7 @@ def gibbs():
         sess.run(tf.global_variables_initializer())
 
         # Gibbs sampler iterations
-        for i in tqdm(range(num_iter)): # TODO: replace with tf.while ?
+        for i in range(num_iter): 
 
             # While loop: dataset full pass
             sess.run(iterator.initializer)        
@@ -294,14 +281,14 @@ def gibbs():
                 
                 param_log.append(sess.run([Sigma2_e, Sigma2_b]))
                 beta_log.append(np.array(sess.run(Ebeta)).reshape(M))
-                ny_log.append(np.array(sess.run(Ny)))
+                delta_log.append(np.array(sess.run(delta)))
     
     # Store local results
     param_log = np.array(param_log) # [s2e, s2b]
     mean_s2e = np.mean(param_log[:,0])
     mean_s2b = np.mean(param_log[:,1])
     mean_ebeta = np.mean(beta_log, axis=0)
-    pip = np.mean(ny_log, axis = 0)
+    pip = np.mean(delta_log, axis = 0)
     corr_ebeta_betatrue = np.corrcoef(mean_ebeta, beta_true)[0][1]
     
     # Store overall results
@@ -338,16 +325,14 @@ results = np.stack((
     oa_cor,
     oa_nip,
     oa_time), axis=-1)
-print('s2e,s2b,cor,pip,time')
-print(results)
 
-# filename = 'TBv6_n{}_m{}_mNZ{}_results.csv'.format(N,M,mNZ)
-# print('\nThe benchmarking results are stored in ' + filename)
+filename = 'TBv6_n{}_m{}_mNZ{}_results.csv'.format(N,M,mNZ)
+print('\nThe benchmarking results are stored in ' + filename)
 
-# np.savetxt(
-#    filename,
-#    results,
-#    delimiter=',',
-#    header='sigma2_e, sigma2_b, corr(eb|bt), nIP, time',
-#    fmt='%.8f')
+np.savetxt(
+    filename,
+    results,
+    delimiter=',',
+    header='sigma2_e, sigma2_b, corr(eb|bt), nIP, time',
+    fmt='%.8f')
 

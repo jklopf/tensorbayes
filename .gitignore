@@ -3,3 +3,7 @@ data/
 *.txt
 *.log
 graph/
+backups/
+.vscode/
+.vscode/settings.json
+

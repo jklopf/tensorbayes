@@ -5,6 +5,7 @@ This script takes 2 arguments:
 N:              Number of individuals
 M:              Number of covariates
 pNZ:            Proportion of non-zero covariates
+n: 		Number of time the simulation study is performed
 
 Everything is sent to stdout.
 """
@@ -194,12 +195,9 @@ def gibbs():
     colx = tf.reshape(col, [N,1]) # reshape the array element as a column vector
 
 
-    # Could be implemented:
-    # building datasets using TF API without numpy
 
     '''
-    TODO: 	Actually implement all the algorithm optimizations of the reference article
-            which may not be implemented here. Depends on later implementations of input pipeline.
+
     '''
 
     #  Parameters setup
@@ -224,11 +222,6 @@ def gibbs():
     s0E = Sigma2_e.initialized_value() / 2
 
 
-    # Tensorboard graph
-    # TODO: look up what TensorBoard can do, this can be used in the end to have a graph representation of the algorithm.
-    # Also, for graph clarity, operations should be named.
-    #writer = tf.summary.FileWriter('.')
-    #writer.add_graph(tf.get_default_graph())
 
 
     # Computations: computation for each column
@@ -237,15 +230,9 @@ def gibbs():
 
 
     # Assignment ops:
-        # If tensorflow > 1.9 :
-        # As we don't chain assignment operations, assignment does not require to return the evaluation of the new value
-        # therefore, all read_value are set to False. This changes runtime for about 1 sec (see above).
-        # Run with `read_value = True`: 63.4s
-        # Run with `read_value = False`: 62.2s
-        # maybe there is a trick here for storing the log using read_value
 
-    beta_item_assign_op = Ebeta[ind,0].assign(ta_beta) 		# when doing item assignment, read_value becomes an unexpected parameter, 
-    ny_item_assign_op = Ny[ind].assign(ta_ny)               # as tensorflow doesn't know what to return between the single item or the whole variable
+    beta_item_assign_op = Ebeta[ind,0].assign(ta_beta) 		
+    ny_item_assign_op = Ny[ind].assign(ta_ny)               
     eps_up_fl = epsilon.assign(ta_eps)
     fullpass = tf.group(beta_item_assign_op, ny_item_assign_op, eps_up_fl)
     s2e_up = Sigma2_e.assign(sample_sigma2_e(N,epsilon,v0E,s0E))
@@ -271,7 +258,7 @@ def gibbs():
         sess.run(tf.global_variables_initializer())
 
         # Gibbs sampler iterations
-        for i in range(num_iter): # TODO: replace with tf.while ?
+        for i in range(num_iter): 
 
             # While loop: dataset full pass
             sess.run(iterator.initializer)        
